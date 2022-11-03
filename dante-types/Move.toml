@@ -7,4 +7,4 @@ Sui = { local = "../../sui/crates/sui-framework"}
 
 [addresses]
 dante_types = "0x0"
-sui =  "0000000000000000000000000000000000000002"
+sui =  "0x02"

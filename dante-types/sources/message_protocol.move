@@ -32,6 +32,9 @@ module dante_types::message_protocol {
 
     const Sui_Address: u8 = 22;
 
+    // Error 
+    const TYPE_ERROR: u64 = 0;
+
     struct MessageItem<T: copy + drop + store> has copy, drop, store {
         name: vector<u8>,
         type: u8,
@@ -134,18 +137,74 @@ module dante_types::message_protocol {
         }
     }
 
-    fun number_item_to_be_bytes<T: copy + drop + store>(item: MessageItem<T>): vector<u8> {
-        let x = bcs::to_bytes(&item.value);
+    public entry fun address_create_item(name: vector<u8>, value: address): MessageItem<address> {
+        MessageItem {
+            name, 
+            type: Sui_Address,
+            value,
+        }
+    }
+
+    public entry fun message_item_to_rawbytes<T: copy + drop + store>(item: &MessageItem<T>): vector<u8> {
+
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    /// Private functions
+    fun number_to_be_rawbytes<T: copy + drop + store>(number: & T): vector<u8> {
+        let x = bcs::to_bytes(number);
         vector::reverse<u8>(&mut x);
         x
+    }
+
+    fun string_item_to_rawbytes(item: &MessageItem<vector<u8>>): vector<u8> {
+        assert!(item.type == Sui_String, TYPE_ERROR);
+        item.value
+    }
+
+    fun vec_string_item_to_rawbytes(item: &MessageItem<vector<vector<u8>>>): vector<u8> {
+        assert!(item.type == Sui_String, TYPE_ERROR);
+        let idx: u64 = 0;
+        let output: vector<u8> = vector::empty<u8>();
+        while (idx < vector::length(&item.value)) {
+            vector::append<u8>(&mut output, *vector::borrow(&item.value, idx));
+            // vector::append<u8>(&mut output, item.value[idx]);
+            idx = idx + 1;
+        };
+
+        output
+    }
+
+    fun address_item_to_rawbytes(item: &MessageItem<address>): vector<u8> {
+        assert!(item.type == Sui_Address, TYPE_ERROR);
+        bcs::to_bytes(&item.value)
+    }
+
+    fun number_item_to_rawbytes<T: copy + drop + store>(item: &MessageItem<T>): vector<u8> {
+        assert!((item.type >= Sui_U8) && (item.type <= Sui_U128), TYPE_ERROR);
+        number_to_be_rawbytes(&item.value)
+    }
+
+    fun vec_number_item_to_rawbytes<T: copy + drop + store>(item: &MessageItem<vector<T>>): vector<u8> {
+        assert!((item.type >= Sui_Vec_U8) && (item.type <= Sui_Vec_U128), TYPE_ERROR);
+        let idx: u64 = 0;
+        let output: vector<u8> = vector::empty<u8>();
+        while (idx < vector::length(&item.value)) {
+            let x = number_to_be_rawbytes(vector::borrow(&item.value, idx));
+            vector::append<u8>(&mut output, x);
+            // vector::append<u8>(&mut output, item.value[idx]);
+            idx = idx + 1;
+        };
+
+        output
     }
 
     #[test]
     public fun test_bcs() {
         let x128: u128 = 0xff223344556677889900112233445566;
         let item = u128_create_item(b"Hello Nika", x128);
-        let item_bytes = number_item_to_be_bytes(item);
-        // assert!(item_bytes == vector<u8>[0xff, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66], 0);
+        let item_bytes = number_to_be_rawbytes(&item.value);
+        assert!(item_bytes == vector<u8>[0xff, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66], 0);
         assert!(vector::length(&item_bytes) == 16, 1);
     }
 }
