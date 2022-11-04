@@ -38,6 +38,9 @@ module dante_types::message_item {
     // Error 
     const TYPE_ERROR: u64 = 0;
 
+    // value name
+    const VALUE_NAME: vector<u8> = b"value";
+
     // MessageItem
     struct MessageItem has key, store {
         id: UID,
@@ -46,21 +49,25 @@ module dante_types::message_item {
     }
 
     //Getter and Setter for `MessageItem`
-    public fun item_set_name<T: copy + drop + store>(self: &mut MessageItem, name: vector<u8>) {
+    public fun item_set_name(self: &mut MessageItem, name: vector<u8>) {
         self.name = name;
     }
 
-    public fun item_name<T: copy + drop + store>(self: &MessageItem): vector<u8> {
+    public fun item_name(self: &MessageItem): vector<u8> {
         self.name
     }
 
-    // public fun item_set_value<T: copy + drop + store>(self: &mut MessageItem, value: T) {
-    //     self.value = value;
-    // }
+    public fun item_type(self: &MessageItem): u8 {
+        self.type
+    }
 
-    // public fun item_value<T: copy + drop + store>(self: &MessageItem): T {
-    //     self.value
-    // }
+    public fun item_set_value<T: copy + drop + store>(self: &mut MessageItem, value: T) {
+        *dynamic_field::borrow_mut<vector<u8>, T>(&mut self.id, b"value") = value;
+    }
+
+    public fun item_value<T: copy + drop + store>(self: &MessageItem): T {
+        *dynamic_field::borrow<vector<u8>, T>(&self.id, b"value")
+    }
     
     // Operations for `MessageItem`
     public fun create_item<T: copy + drop + store>(item_name: vector<u8>, type: u8, value: T, ctx: &mut TxContext): MessageItem{        
@@ -74,23 +81,104 @@ module dante_types::message_item {
         item
     }
 
+    public fun delete_item(item: MessageItem) {
+        let MessageItem {id, name: _, type: _,} = item;
+        object::delete(id);
+    }
+
     fun value_type_judge(item: &MessageItem): bool {
         let x = false;
         if (item.type == Sui_String) {
             x = dynamic_field::exists_with_type<vector<u8>, vector<u8>>(&item.id, b"value");
+        } else if (item.type == Sui_U8) {
+            x = dynamic_field::exists_with_type<vector<u8>, u8>(&item.id, b"value");
+        } else if (item.type == Sui_U16) {
+            x = dynamic_field::exists_with_type<vector<u8>, u16>(&item.id, b"value");
+        } else if (item.type == Sui_U32) {
+            x = dynamic_field::exists_with_type<vector<u8>, u32>(&item.id, b"value");
+        } else if (item.type == Sui_U64) {
+            x = dynamic_field::exists_with_type<vector<u8>, u64>(&item.id, b"value");
+        } else if (item.type == Sui_U128) {
+            x = dynamic_field::exists_with_type<vector<u8>, u128>(&item.id, b"value");
+        } else if (item.type == Sui_Vec_String) {
+            x = dynamic_field::exists_with_type<vector<u8>, vector<vector<u8>>>(&item.id, b"value");
+        } else if (item.type == Sui_Vec_U8) {
+            x = dynamic_field::exists_with_type<vector<u8>, vector<u8>>(&item.id, b"value");
+        } else if (item.type == Sui_Vec_U16) {
+            x = dynamic_field::exists_with_type<vector<u8>, vector<u16>>(&item.id, b"value");
+        } else if (item.type == Sui_Vec_U32) {
+            x = dynamic_field::exists_with_type<vector<u8>, vector<u32>>(&item.id, b"value");
+        } else if (item.type == Sui_Vec_U64) {
+            x = dynamic_field::exists_with_type<vector<u8>, vector<u64>>(&item.id, b"value");
+        } else if (item.type == Sui_Vec_U128) {
+            x = dynamic_field::exists_with_type<vector<u8>, vector<u128>>(&item.id, b"value");
+        } else if (item.type == Sui_Address) {
+            x = dynamic_field::exists_with_type<vector<u8>, address>(&item.id, b"value");
         };
 
         x
     }
 
-    // public entry fun message_item_to_rawbytes<T: copy + drop + store>(item: &MessageItem<T>): vector<u8> {
-    //     if (item.type == Sui_Address) {
-    //         let x = item_value<address>(item);
-    //         // address_to_rawbytes(&x)
-    //     };
+    public fun message_item_to_rawbytes(item: &MessageItem): vector<u8> {
+        let output = vector::empty<u8>();
+        vector::append<u8>(&mut output, item.name);
+        vector::push_back<u8>(&mut output, item.type);
 
-    //     vector<u8>[]
-    // }
+        if (item.type == Sui_String) {
+            let value = dynamic_field::borrow<vector<u8>, vector<u8>>(&item.id, b"value");
+            vector::append<u8>(&mut output, string_item_to_rawbytes(value));
+
+        } else if (item.type == Sui_U8) {
+            let value = dynamic_field::borrow<vector<u8>, u8>(&item.id, b"value");
+            vector::push_back<u8>(&mut output, *value);
+
+        } else if (item.type == Sui_U16) {
+            let value = dynamic_field::borrow<vector<u8>, u16>(&item.id, b"value");
+            vector::append<u8>(&mut output, number_to_be_rawbytes(value));
+
+        } else if (item.type == Sui_U32) {
+            let value = dynamic_field::borrow<vector<u8>, u32>(&item.id, b"value");
+            vector::append<u8>(&mut output, number_to_be_rawbytes(value));
+
+        } else if (item.type == Sui_U64) {
+            let value = dynamic_field::borrow<vector<u8>, u64>(&item.id, b"value");
+            vector::append<u8>(&mut output, number_to_be_rawbytes(value));
+
+        } else if (item.type == Sui_U128) {
+            let value = dynamic_field::borrow<vector<u8>, u128>(&item.id, b"value");
+            vector::append<u8>(&mut output, number_to_be_rawbytes(value));
+
+        } else if (item.type == Sui_Vec_String) {
+            let value = dynamic_field::borrow<vector<u8>, vector<vector<u8>>>(&item.id, b"value");
+            vector::append<u8>(&mut output, vec_string_to_rawbytes(value));
+
+        } else if (item.type == Sui_Vec_U8) {
+            let value = dynamic_field::borrow<vector<u8>, vector<u8>>(&item.id, b"value");
+            vector::append<u8>(&mut output, *value);
+
+        } else if (item.type == Sui_Vec_U16) {
+            let value = dynamic_field::borrow<vector<u8>, vector<u16>>(&item.id, b"value");
+            vector::append<u8>(&mut output, vec_number_to_rawbytes(value));
+
+        } else if (item.type == Sui_Vec_U32) {
+            let value = dynamic_field::borrow<vector<u8>, vector<u32>>(&item.id, b"value");
+            vector::append<u8>(&mut output, vec_number_to_rawbytes(value));
+
+        } else if (item.type == Sui_Vec_U64) {
+            let value = dynamic_field::borrow<vector<u8>, vector<u64>>(&item.id, b"value");
+            vector::append<u8>(&mut output, vec_number_to_rawbytes(value));
+
+        } else if (item.type == Sui_Vec_U128) {
+            let value = dynamic_field::borrow<vector<u8>, vector<u128>>(&item.id, b"value");
+            vector::append<u8>(&mut output, vec_number_to_rawbytes(value));
+
+        } else if (item.type == Sui_Address) {
+            let value = dynamic_field::borrow<vector<u8>, address>(&item.id, b"value");
+            vector::append<u8>(&mut output, address_to_rawbytes(value));
+        };
+
+        output
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////
     /// Private functions
@@ -133,14 +221,29 @@ module dante_types::message_item {
         output
     }
 
-    // #[test]
-    // public fun test_bcs() {
-    //     let x128: u128 = 0xff223344556677889900112233445566;
-    //     let item = create_item(b"Hello Nika", x128);
-    //     let item_bytes = number_to_be_rawbytes(&item.value);
-    //     assert!(item_bytes == vector<u8>[0xff, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66], 0);
-    //     assert!(vector::length(&item_bytes) == 16, 1);
-    // }
+    #[test]
+    public fun test_item_to_bytes() {
+        use sui::test_scenario;
+
+        let owner = @0xCAFE;
+
+        let scenario_val = test_scenario::begin(owner);
+        let scenario = &mut scenario_val;
+
+        test_scenario::next_tx(scenario, owner);
+        {
+            let x128: u128 = 0xff223344556677889900112233445566;
+            let item = create_item(b"Hello Nika", Sui_U128, x128, test_scenario::ctx(scenario));
+            let item_bytes = message_item_to_rawbytes(&item);
+            let expectBytes = b"Hello Nika";
+            vector::append<u8>(&mut expectBytes, vector<u8>[Sui_U128, 0xff, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
+            assert!(item_bytes == expectBytes, 0);
+            // assert!(vector::length(&item_bytes) == 16, 1);
+            delete_item(item);
+        };
+
+        test_scenario::end(scenario_val);
+    }
 }
 
 // module dante_types::payload {
@@ -153,16 +256,16 @@ module dante_types::message_item {
 
 // }
 
-module dante_types::message_protocol {
-    use dante_types::message_item;
+// module dante_types::message_protocol {
+//     use dante_types::message_item;
 
-    // fun create_payload(): message_item::MessageItem<vector<vector<u8>>> {
-    //     message_item::vec_string_create_item(b"Nika", vector<vector<u8>>[vector<u8>[0x11, 0x22]])
-    // }
+//     // fun create_payload(): message_item::MessageItem<vector<vector<u8>>> {
+//     //     message_item::vec_string_create_item(b"Nika", vector<vector<u8>>[vector<u8>[0x11, 0x22]])
+//     // }
 
-    // #[test]
-    // public fun test_creation() {
-    //     let x = create_payload();
-    //     assert!(message_item::item_value(&x) == vector<vector<u8>>[vector<u8>[0x11, 0x22]], 0);
-    // }
-}
+//     // #[test]
+//     // public fun test_creation() {
+//     //     let x = create_payload();
+//     //     assert!(message_item::item_value(&x) == vector<vector<u8>>[vector<u8>[0x11, 0x22]], 0);
+//     // }
+// }
