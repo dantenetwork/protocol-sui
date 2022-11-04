@@ -1,4 +1,6 @@
-module dante_types::message_protocol {
+module dante_types::payload {
+    // friend dante_types::message_protocol;
+    
     use std::bcs;
     use std::vector;
 
@@ -35,13 +37,32 @@ module dante_types::message_protocol {
     // Error 
     const TYPE_ERROR: u64 = 0;
 
+    // MessageItem
     struct MessageItem<T: copy + drop + store> has copy, drop, store {
         name: vector<u8>,
         type: u8,
         value: T,
     }
 
-    public entry fun string_create_item(name: vector<u8>, value: vector<u8>): MessageItem<vector<u8>>{        
+    //Getter and Setter for `MessageItem`
+    public fun item_set_name<T: copy + drop + store>(self: &mut MessageItem<T>, name: vector<u8>) {
+        self.name = name;
+    }
+
+    public fun item_name<T: copy + drop + store>(self: &MessageItem<T>): vector<u8> {
+        self.name
+    }
+
+    public fun item_set_value<T: copy + drop + store>(self: &mut MessageItem<T>, value: T) {
+        self.value = value;
+    }
+
+    public fun item_value<T: copy + drop + store>(self: &MessageItem<T>): T {
+        self.value
+    }
+    
+    // Operations for `MessageItem`
+    public fun string_create_item(name: vector<u8>, value: vector<u8>): MessageItem<vector<u8>>{        
         MessageItem {
             name,
             type: Sui_String,
@@ -49,7 +70,7 @@ module dante_types::message_protocol {
         }
     }
 
-    public entry fun u8_create_item(name: vector<u8>, value: u8): MessageItem<u8>{        
+    public fun u8_create_item(name: vector<u8>, value: u8): MessageItem<u8>{        
         MessageItem {
             name,
             type: Sui_U8,
@@ -57,7 +78,7 @@ module dante_types::message_protocol {
         }
     }
 
-    public entry fun u16_create_item(name: vector<u8>, value: u16): MessageItem<u16>{        
+    public fun u16_create_item(name: vector<u8>, value: u16): MessageItem<u16>{        
         MessageItem {
             name,
             type: Sui_U16,
@@ -65,7 +86,7 @@ module dante_types::message_protocol {
         }
     }
 
-    public entry fun u32_create_item(name: vector<u8>, value: u32): MessageItem<u32>{        
+    public fun u32_create_item(name: vector<u8>, value: u32): MessageItem<u32>{        
         MessageItem {
             name,
             type: Sui_U32,
@@ -73,7 +94,7 @@ module dante_types::message_protocol {
         }
     }
 
-    public entry fun u64_create_item(name: vector<u8>, value: u64): MessageItem<u64>{        
+    public fun u64_create_item(name: vector<u8>, value: u64): MessageItem<u64>{        
         MessageItem {
             name,
             type: Sui_U64,
@@ -81,7 +102,7 @@ module dante_types::message_protocol {
         }
     }
 
-    public entry fun u128_create_item(name: vector<u8>, value: u128): MessageItem<u128>{        
+    public fun u128_create_item(name: vector<u8>, value: u128): MessageItem<u128>{        
         MessageItem {
             name,
             type: Sui_U128,
@@ -89,7 +110,7 @@ module dante_types::message_protocol {
         }
     }
 
-    public entry fun vec_string_create_item(name: vector<u8>, value: vector<vector<u8>>): MessageItem<vector<vector<u8>>>{        
+    public fun vec_string_create_item(name: vector<u8>, value: vector<vector<u8>>): MessageItem<vector<vector<u8>>>{        
         MessageItem {
             name,
             type: Sui_Vec_String,
@@ -97,7 +118,7 @@ module dante_types::message_protocol {
         }
     }
 
-     public entry fun vec_u8_create_item(name: vector<u8>, value: vector<u8>): MessageItem<vector<u8>>{        
+     public fun vec_u8_create_item(name: vector<u8>, value: vector<u8>): MessageItem<vector<u8>>{        
         MessageItem {
             name,
             type: Sui_Vec_U8,
@@ -105,7 +126,7 @@ module dante_types::message_protocol {
         }
     }
 
-    public entry fun vec_u16_create_item(name: vector<u8>, value: vector<u16>): MessageItem<vector<u16>>{        
+    public fun vec_u16_create_item(name: vector<u8>, value: vector<u16>): MessageItem<vector<u16>>{        
         MessageItem {
             name,
             type: Sui_Vec_U16,
@@ -113,7 +134,7 @@ module dante_types::message_protocol {
         }
     }
 
-    public entry fun vec_u32_create_item(name: vector<u8>, value: vector<u32>): MessageItem<vector<u32>>{        
+    public fun vec_u32_create_item(name: vector<u8>, value: vector<u32>): MessageItem<vector<u32>>{        
         MessageItem {
             name,
             type: Sui_Vec_U32,
@@ -121,7 +142,7 @@ module dante_types::message_protocol {
         }
     }
 
-    public entry fun vec_u64_create_item(name: vector<u8>, value: vector<u64>): MessageItem<vector<u64>>{        
+    public fun vec_u64_create_item(name: vector<u8>, value: vector<u64>): MessageItem<vector<u64>>{        
         MessageItem {
             name,
             type: Sui_Vec_U64,
@@ -129,7 +150,7 @@ module dante_types::message_protocol {
         }
     }
 
-    public entry fun vec_u128_create_item(name: vector<u8>, value: vector<u128>): MessageItem<vector<u128>>{        
+    public fun vec_u128_create_item(name: vector<u8>, value: vector<u128>): MessageItem<vector<u128>>{        
         MessageItem {
             name,
             type: Sui_Vec_U128,
@@ -137,7 +158,7 @@ module dante_types::message_protocol {
         }
     }
 
-    public entry fun address_create_item(name: vector<u8>, value: address): MessageItem<address> {
+    public fun address_create_item(name: vector<u8>, value: address): MessageItem<address> {
         MessageItem {
             name, 
             type: Sui_Address,
@@ -145,9 +166,9 @@ module dante_types::message_protocol {
         }
     }
 
-    public entry fun message_item_to_rawbytes<T: copy + drop + store>(item: &MessageItem<T>): vector<u8> {
+    // public entry fun message_item_to_rawbytes<T: copy + drop + store>(item: &MessageItem<T>): vector<u8> {
 
-    }
+    // }
 
     ///////////////////////////////////////////////////////////////////////////////////////
     /// Private functions
@@ -206,5 +227,19 @@ module dante_types::message_protocol {
         let item_bytes = number_to_be_rawbytes(&item.value);
         assert!(item_bytes == vector<u8>[0xff, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66], 0);
         assert!(vector::length(&item_bytes) == 16, 1);
+    }
+}
+
+module dante_types::message_protocol {
+    use dante_types::payload;
+
+    fun create_payload(): payload::MessageItem<vector<vector<u8>>> {
+        payload::vec_string_create_item(b"Nika", vector<vector<u8>>[vector<u8>[0x11, 0x22]])
+    }
+
+    #[test]
+    public fun test_creation() {
+        let x = create_payload();
+        assert!(payload::item_value(&x) == vector<vector<u8>>[vector<u8>[0x11, 0x22]], 0);
     }
 }
