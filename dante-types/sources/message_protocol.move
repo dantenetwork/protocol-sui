@@ -246,15 +246,74 @@ module dante_types::message_item {
     }
 }
 
-// module dante_types::payload {
-//     use sui::object::{Self, ID, UID};
+module dante_types::payload {
+    use sui::object::{Self, UID};
+    use sui::dynamic_object_field;
+    use sui::tx_context::TxContext;
+    use dante_types::message_item::{Self, MessageItem};
+    use std::option::{Self, Option};
 
-//     struct Payload has key, store {
-//         id: UID,
-//     }
+    // Error defination
+    const NOT_Empty_OBJECT: u64 = 0;
 
+    struct Payload has key, store {
+        id: UID,
+        
+        // store current item size
+        size: u64,
+    }
 
-// }
+    public fun create_payload(ctx: &mut TxContext): Payload {
+        Payload {
+            id: object::new(ctx),
+            size: 0,
+        }
+    }
+
+    fun delete_last_item(payload: &mut Payload) {
+        let itemOpt = pop_back_item(payload);
+        if (option::is_some(&itemOpt)) {
+            let item = option::extract(&mut itemOpt);
+            message_item::delete_item(item);
+        };
+
+        option::destroy_none(itemOpt);
+    }
+
+    public fun delete_payload(payload: Payload) {
+        while (payload.size > 0) {
+            delete_last_item(&mut payload);
+        };
+
+        let Payload {id, size} = payload;
+        assert!(size == 0, NOT_Empty_OBJECT);
+        object::delete(id);
+    }
+
+    //Getter and Setter for `MessageItem`
+    public fun payload_size(payload: &Payload): u64 {
+        payload.size
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    public fun push_back_item(payload: &mut Payload, item: MessageItem) {
+        dynamic_object_field::add(&mut payload.id, payload.size, item);
+        payload.size = payload.size + 1;
+    }
+
+    public fun pop_back_item(payload: &mut Payload): Option<MessageItem>{
+        let output = option::none();
+
+        if (payload.size > 0) {
+            let item = dynamic_object_field::remove<u64, MessageItem>(&mut payload.id, payload.size - 1);
+            // message_item::delete_item(item);
+            payload.size = payload.size - 1;
+            option::fill<MessageItem>(&mut output, item);
+        };
+
+        output
+    }
+}
 
 // module dante_types::message_protocol {
 //     use dante_types::message_item;
