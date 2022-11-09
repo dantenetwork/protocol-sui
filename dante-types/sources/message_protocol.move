@@ -491,7 +491,11 @@ module dante_types::session {
 }
 
 module dante_types::SQoS {
-    // use std::vector;
+    use std::vector;
+    use std::option::{Self, Option};
+    use dante_types::message_item;
+
+    const TypeLow: u8 = 0;
 
     const Reveal: u8 = 0;
     public fun sqos_reveal(): u8 {Reveal}
@@ -514,8 +518,94 @@ module dante_types::SQoS {
     const CrossVerify: u8 = 9;
     public fun sqos_crossVerify(): u8 {CrossVerify}
 
-    struct SQoSItem {
+    const TypeHigh: u8 = 9;
+
+    // Error
+    const TYPE_ERROR: u64 = 0;
+    const SQoS_Type_Conflict: u64 = 1;
+
+    struct SQoSItem has copy, drop, store {
         t: u8,
         v: vector<u8>,
+    }
+
+    struct SQoS has copy, drop, store {
+        sqosItems: vector<SQoSItem>,
+    }
+
+    public fun create_item(t: u8, v: vector<u8>): SQoSItem {
+        assert!((TypeLow <= t) && (t <= TypeHigh), TYPE_ERROR);
+        SQoSItem {
+            t,
+            v,
+        }
+    }
+
+    public fun create_SQoS(): SQoS {
+        SQoS {
+            sqosItems: vector::empty<SQoSItem>(),
+        }
+    }
+
+    // Getters and Setters
+    public fun sqos_item_type(item: &SQoSItem): u8 {item.t}
+    public fun sqos_item_value(item: &SQoSItem): vector<u8> {item.v}
+
+    public fun add_sqos_item(sqos: &mut SQoS, item: SQoSItem) {
+        let checkItem = query_sqos_item(sqos, item.t);
+        assert!(option::is_none(&checkItem), SQoS_Type_Conflict);
+        vector::push_back<SQoSItem>(&mut sqos.sqosItems, item);
+    }
+
+    public fun query_sqos_item(sqos: &SQoS, t: u8): Option<SQoSItem> {
+        let itemOpt: Option<SQoSItem> = option::none();
+        let idx = 0;
+        while (idx < vector::length(&sqos.sqosItems)) {
+            let ele = vector::borrow<SQoSItem>(&sqos.sqosItems, idx);
+            if (ele.t == t) {
+                itemOpt = option::some(*ele);
+                break
+            };
+
+            idx = idx + 1;
+        };
+
+        itemOpt
+    }
+
+    // serialization
+    public fun sqos_item_to_bytes(sqosItem: &SQoSItem): vector<u8> {
+        let rawData = message_item::number_to_be_rawbytes(&sqosItem.t);
+        vector::append<u8>(&mut rawData, sqosItem.v);
+        rawData
+    }
+
+    public fun sqos_to_bytes(sqos: &SQoS): vector<u8> {
+        let rawData = vector::empty<u8>();
+        let idx = 0;
+        while (idx < vector::length(&sqos.sqosItems)) {
+            let ele = vector::borrow(&sqos.sqosItems, idx);
+            vector::append<u8>(&mut rawData, sqos_item_to_bytes(ele));
+            idx = idx + 1;
+        };
+
+        rawData
+    }
+
+    /////////////////////////////////////////////////////////////
+    #[test]
+    public fun test_sqos() {
+        let item = create_item(5, vector<u8>[0x11, 0x22, 0x33, 0x44]);
+        let sqos = create_SQoS();
+
+        add_sqos_item(&mut sqos, item);
+
+        let error_raw_data_unequal = 0;
+        assert!(sqos_to_bytes(&sqos) == vector<u8>[0x05, 0x11, 0x22, 0x33, 0x44], error_raw_data_unequal);
+        
+        let error_none = 1;
+        assert!(option::extract(&mut query_sqos_item(&sqos, 5)) == item, error_none);
+        
+        // add_sqos_item(&mut sqos, item);
     }
 }
