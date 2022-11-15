@@ -413,7 +413,6 @@ module dante_types::session {
     // Error
     const TYPE_ERROR: u64 = 0;
 
-
     struct Session has copy, drop, store {
         id: u128,
         type: u8,
