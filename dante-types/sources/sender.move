@@ -1,4 +1,7 @@
 module dante_types::env_recorder {
+    use dante_types::SQoS::SQoS;
+    use dante_types::session::Session;
+    
     use sui::object::{Self, UID};
     use sui::tx_context::{TxContext};
     use sui::transfer;
@@ -19,6 +22,8 @@ module dante_types::env_recorder {
         transfer::share_object(son);
     }
 
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    /// send out nonce
     public(friend) fun next_send_id(send_out_env: &mut SendOutEnv, toChain: vector<u8>): u128 {
         let nonce: u128;
         if (dynamic_field::exists_with_type<vector<u8>, u128>(&mut send_out_env.id, toChain)) {
@@ -40,6 +45,19 @@ module dante_types::env_recorder {
             1
         }
     }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    /// context
+    struct Context has copy, drop, store {
+        id: u128,
+        fromChain: vector<u8>,
+        sender: vector<u8>,
+        signer: vector<u8>,
+        sqos: SQoS,
+        session: Session,
+    }
+
+    
 }
 
 module dante_types::sender {
