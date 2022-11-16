@@ -96,6 +96,7 @@ module dante_types::sender {
     use dante_types::SQoS::{Self, SQoS};
     use dante_types::session::{Self, Session};
     use dante_types::env_recorder::{Self, SendOutEnv, ProtocolContext};
+    use dante_types::message_item;
     
     use std::bcs;
     use std::vector;
@@ -173,6 +174,7 @@ module dante_types::sender {
             assert!(msgID == (vector::length(sentCache) as u128), E_Invalid_MessageID);
         } else {
             dynamic_field::add(&mut protocol_sender.id, toChain, vector<SentMessage>[sentMessage]);
+            vector::push_back(&mut protocol_sender.toChains, toChain);
         };
 
         env_recorder::create_context(msgID, env_recorder::chain_name(), sender, sender, sqos, session)
@@ -180,7 +182,7 @@ module dante_types::sender {
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
     /// invocation/message out
-    public entry fun send_message_out(toChain: vector<u8>,
+    public fun send_message_out(toChain: vector<u8>,
                                     sqos: SQoS,
                                     contractName: vector<u8>,
                                     actionName: vector<u8>,
@@ -199,7 +201,7 @@ module dante_types::sender {
         raw_send_out_message(msgID, toChain, sqos, contractName, actionName, data, session, protocol_sender, ctx);                             
     }
 
-    public entry fun call_out(toChain: vector<u8>,
+    public fun call_out(toChain: vector<u8>,
                                 sqos: SQoS,
                                 contractName: vector<u8>,
                                 actionName: vector<u8>,
@@ -219,7 +221,7 @@ module dante_types::sender {
         raw_send_out_message(msgID, toChain, sqos, contractName, actionName, data, session, protocol_sender, ctx); 
     }
 
-    public entry fun response_out(toChain: vector<u8>,
+    public fun response_out(toChain: vector<u8>,
                                 sqos: SQoS,
                                 contractName: vector<u8>,
                                 actionName: vector<u8>,
@@ -251,6 +253,18 @@ module dante_types::sender {
                                             option::none<vector<u8>>());
         
         raw_send_out_message(msgID, fromChain, SQoS::create_SQoS(), vector::empty<u8>(), vector::empty<u8>(), payload::create_payload(ctx), session, protocol_sender, ctx); 
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    /// entry test
+    public entry fun test_send_message_out(send_out_env: &mut SendOutEnv, protocol_sender: &mut ProtocolSender, ctx: &mut TxContext) {
+        let toChain: vector<u8> = b"Polkadot";
+        let sqos: SQoS = SQoS::create_SQoS();
+        let contractName: vector<u8> = vector<u8>[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
+        let actionName: vector<u8> =vector<u8>[0x01, 0x02, 0x03, 0x04];
+        let data: Payload = payload::create_payload(ctx);
+
+        send_message_out(toChain, sqos, contractName, actionName, data, send_out_env, protocol_sender, ctx);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////

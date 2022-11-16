@@ -490,6 +490,9 @@ module dante_types::session {
 }
 
 module dante_types::SQoS {
+    // use sui::object::{Self, UID};
+    // use sui::tx_context::{TxContext};
+
     use std::vector;
     use std::option::{Self, Option};
     use dante_types::message_item;
@@ -529,6 +532,7 @@ module dante_types::SQoS {
     }
 
     struct SQoS has copy, drop, store {
+        // id: UID,
         sqosItems: vector<SQoSItem>,
     }
 
@@ -540,11 +544,17 @@ module dante_types::SQoS {
         }
     }
 
-    public fun create_SQoS(): SQoS {
+    public fun create_SQoS(/*ctx: &mut TxContext*/): SQoS {
         SQoS {
+            // id: object::new(ctx),
             sqosItems: vector::empty<SQoSItem>(),
         }
     }
+
+    // public fun delete_SQoS(sqos: SQoS) {
+    //     let SQoS {id, sqosItems: _} = sqos;
+    //     object::delete(id);
+    // }
 
     // Getters and Setters
     public fun sqos_item_type(item: &SQoSItem): u8 {item.t}
@@ -594,17 +604,27 @@ module dante_types::SQoS {
     /////////////////////////////////////////////////////////////
     #[test]
     public fun test_sqos() {
-        let item = create_item(5, vector<u8>[0x11, 0x22, 0x33, 0x44]);
-        let sqos = create_SQoS();
+        use sui::test_scenario;
 
-        add_sqos_item(&mut sqos, item);
+        let owner = @0xCAFE;
 
-        let error_raw_data_unequal = 0;
-        assert!(sqos_to_bytes(&sqos) == vector<u8>[0x05, 0x11, 0x22, 0x33, 0x44], error_raw_data_unequal);
-        
-        let error_none = 1;
-        assert!(option::extract(&mut query_sqos_item(&sqos, 5)) == item, error_none);
-        
-        // add_sqos_item(&mut sqos, item);
+        let scenario_val = test_scenario::begin(owner);
+        let scenario = &mut scenario_val;
+
+        test_scenario::next_tx(scenario, owner);
+        {
+            let item = create_item(5, vector<u8>[0x11, 0x22, 0x33, 0x44]);
+            let sqos = create_SQoS(/*test_scenario::ctx(scenario)*/);
+
+            add_sqos_item(&mut sqos, item);
+
+            let error_raw_data_unequal = 0;
+            assert!(sqos_to_bytes(&sqos) == vector<u8>[0x05, 0x11, 0x22, 0x33, 0x44], error_raw_data_unequal);
+            
+            let error_none = 1;
+            assert!(option::extract(&mut query_sqos_item(&sqos, 5)) == item, error_none);
+        };
+
+        test_scenario::end(scenario_val);
     }
 }
