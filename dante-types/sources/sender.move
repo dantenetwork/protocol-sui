@@ -96,7 +96,6 @@ module dante_types::sender {
     use dante_types::SQoS::{Self, SQoS};
     use dante_types::session::{Self, Session};
     use dante_types::env_recorder::{Self, SendOutEnv, ProtocolContext};
-    use dante_types::message_item;
     
     use std::bcs;
     use std::vector;
