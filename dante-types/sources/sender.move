@@ -18,7 +18,7 @@ module dante_types::env_recorder {
     struct SendOutEnv has key, store {
         id: UID,
         // dynamic field: send out nonce
-        // dynamic field: context(TODO)
+        // dynamic field: `ProtocolContext`
     }
 
     // context
@@ -40,6 +40,14 @@ module dante_types::env_recorder {
         transfer::share_object(son);
     }
 
+    // just for test
+    public(friend) fun test_init(ctx: &mut TxContext) {
+        let son = SendOutEnv {
+            id: object::new(ctx),
+        };
+        transfer::share_object(son);
+    }
+
     /////////////////////////////////////////////////////////////////////////////////////////////////
     /// send out nonce
     /// send id is started from `1`
@@ -51,7 +59,7 @@ module dante_types::env_recorder {
             *nonceRef = nonce + 1;
         } else {
             nonce = 1;
-            dynamic_field::add(&mut send_out_env.id, toChain, 2);
+            dynamic_field::add(&mut send_out_env.id, toChain, (2 as u128));
         };
 
         nonce
@@ -92,6 +100,7 @@ module dante_types::env_recorder {
 }
 
 module dante_types::sender {
+    use dante_types::message_item;
     use dante_types::payload::{Self, Payload};
     use dante_types::SQoS::{Self, SQoS};
     use dante_types::session::{Self, Session};
@@ -101,17 +110,19 @@ module dante_types::sender {
     use std::vector;
     use std::option::{Self, Option};
 
-    use sui::object::{Self, UID};
+    use sui::object::{Self, ID, UID};
     use sui::tx_context::{Self, TxContext};
     use sui::transfer;
     use sui::dynamic_field;
+    use sui::dynamic_object_field;
 
     //Error
     const E_Invalid_MessageID: u64 = 0;
     
 
-    struct SentMessage has store {
-        id: u128,
+    struct SentMessage has key, store {
+        id: UID,
+        msgID: u128,
         fromChain: vector<u8>,
         toChain: vector<u8>,
 
@@ -128,8 +139,9 @@ module dante_types::sender {
 
     struct ProtocolSender has key, store {
         id: UID,
-        toChains: vector<vector<u8>>,
-        // dynamic field: 
+        // toChains: vector<vector<u8>>,
+        // dynamic field: map<toChain, vector<ID>>
+        // dynamic object field: map<toChain|ID, SentMessage>
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,7 +149,17 @@ module dante_types::sender {
     fun init(ctx: &mut TxContext) {
         let sender = ProtocolSender {
             id: object::new(ctx),
-            toChains: vector::empty<vector<u8>>(),
+            // toChains: vector::empty<vector<u8>>(),
+        };
+
+        transfer::share_object(sender);
+    }
+
+    // just for test
+    fun test_init(ctx: &mut TxContext) {
+        let sender = ProtocolSender {
+            id: object::new(ctx),
+            // toChains: vector::empty<vector<u8>>(),
         };
 
         transfer::share_object(sender);
@@ -155,8 +177,12 @@ module dante_types::sender {
                             ctx: &mut TxContext): ProtocolContext {
         let sender = tx_context::sender(ctx);
 
+        let suiUid = object::new(ctx);
+        let suiID = object::uid_to_inner(&suiUid);
+
         let sentMessage = SentMessage {
-                                        id: msgID,
+                                        id: suiUid,
+                                        msgID,
                                         fromChain: env_recorder::chain_name(),
                                         toChain,
                                         sqos,
@@ -167,14 +193,18 @@ module dante_types::sender {
                                         signer: sender,
                                         session,
                                     };
-        if (dynamic_field::exists_with_type<vector<u8>, vector<SentMessage>>(&protocol_sender.id, toChain)) {
-            let sentCache = dynamic_field::borrow_mut<vector<u8>, vector<SentMessage>>(&mut protocol_sender.id, toChain);
-            vector::push_back<SentMessage>(sentCache, sentMessage);
+        if (dynamic_field::exists_with_type<vector<u8>, vector<ID>>(&protocol_sender.id, toChain)) {
+            let sentCache = dynamic_field::borrow_mut<vector<u8>, vector<ID>>(&mut protocol_sender.id, toChain);
+            vector::push_back<ID>(sentCache, suiID);
             assert!(msgID == (vector::length(sentCache) as u128), E_Invalid_MessageID);
         } else {
-            dynamic_field::add(&mut protocol_sender.id, toChain, vector<SentMessage>[sentMessage]);
-            vector::push_back(&mut protocol_sender.toChains, toChain);
+            dynamic_field::add(&mut protocol_sender.id, toChain, vector<ID>[suiID]);
+            // vector::push_back(&mut protocol_sender.toChains, toChain);
         };
+
+        let dofKey = toChain;
+        vector::append<u8>(&mut dofKey, message_item::number_to_be_rawbytes(&msgID));
+        dynamic_object_field::add(&mut protocol_sender.id, msgID, sentMessage);
 
         env_recorder::create_context(msgID, env_recorder::chain_name(), sender, sender, sqos, session)
     }
@@ -273,5 +303,43 @@ module dante_types::sender {
         let address_bytes = vector<u8>[01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
         let a: address = object::address_from_bytes(address_bytes);
         assert!(bcs::to_bytes(&a) ==  address_bytes, 0);
+    }
+
+    #[test]
+    public fun test_send_message() {
+        use sui::test_scenario;
+    
+        let alice = @0xACEE;
+        // let bob = @0xB0B1;
+
+        let scenario_val = test_scenario::begin(alice);
+        let scenario = &mut scenario_val;
+
+        test_scenario::next_tx(scenario, alice);
+        {
+            test_init(test_scenario::ctx(scenario));
+            env_recorder::test_init(test_scenario::ctx(scenario));
+        };
+
+        test_scenario::next_tx(scenario, alice);
+        {
+            let env = test_scenario::take_shared<SendOutEnv>(scenario);
+            let protocol_sender = test_scenario::take_shared<ProtocolSender>(scenario);
+
+            test_send_message_out(&mut env, &mut protocol_sender, test_scenario::ctx(scenario));
+            assert!(dynamic_field::exists_with_type<vector<u8>, vector<ID>>(&protocol_sender.id, b"Polkadot"), 0);
+            test_send_message_out(&mut env, &mut protocol_sender, test_scenario::ctx(scenario));
+
+            // let toChain = b"Polkadot";
+            // let sendid1 = env_recorder::next_send_id(&mut env, toChain);
+            // let sendid2 = env_recorder::next_send_id(&mut env, toChain);
+            // assert!(sendid1 == 1, 1);
+            // assert!(sendid2 == 2, 2);
+
+            test_scenario::return_shared(env);
+            test_scenario::return_shared(protocol_sender);
+        };
+
+        test_scenario::end(scenario_val);
     }
 }

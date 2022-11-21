@@ -5,7 +5,7 @@ use sui_sdk::SuiClient;
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let sui = SuiClient::new("https://fullnode.devnet.sui.io:443", None, None).await?;
-    let address = SuiAddress::from_str("0x9e0c6a22c904817400a1dac9ec3e47ddebe97bc4")?;
+    let address = SuiAddress::from_str("0x307794e6944cec99ed1501e6d0b8bb4ac78753ff")?;
     let objects = sui.read_api().get_objects_owned_by_address(address).await?;
     println!("{:?}", objects);
 

@@ -11,19 +11,28 @@ async function objects_test() {
 
     // console.log(objects);
 
-    const objects_owned_by_env = await provider.getObjectsOwnedByObject("0xf1d088826d781d80ec22736daa943d05e6b35b75");
+    const objects_owned_by_env = await provider.getObjectsOwnedByObject("0x7eda540f83fe90327a03cff9c02cded06e28dfb8");
     console.log("Objects owned by env: ")
     console.log(objects_owned_by_env);
 
-    const objects_owned_by_sender = await provider.getObjectsOwnedByObject("0x970968079e39b6b5f3e1b1e42d7820f4b02637a4");
+    const objects_owned_by_sender = await provider.getObjectsOwnedByObject("0x2c1596effa775f806111f6b3dead41fcab2e8bed");
     console.log("Objects owned by sender: ")
     console.log(objects_owned_by_sender);
 
     var sentMsg = [];
     for (var idx in objects_owned_by_sender) {
-        const sentMsgObj = await provider.getObject(objects_owned_by_sender[idx].objectId);
-        console.log(Buffer.from(fromB64(sentMsgObj.details.data.fields.name)).toString());
-        console.log(sentMsgObj.details.data.fields.value);
+        if ('0x2::dynamic_field::Field<vector<u8>, vector<0x2::object::ID>>' == objects_owned_by_sender[idx].type) {
+            const objIDCache = await provider.getObject(objects_owned_by_sender[idx].objectId);
+            console.log(objIDCache.details.data.fields);
+            const toChain = Buffer.from(fromB64(objIDCache.details.data.fields.name)).toString();
+            // console.log(toChain);
+            // console.log(objIDCache.details.data.fields.value.length);
+            for (var idx2 in objIDCache.details.data.fields.value) {
+                const sentMessage = await provider.getObject(objIDCache.details.data.fields.value[idx2]);
+                console.log(sentMessage.details.data.fields.data);
+                const items = await provider.getObjectsOwnedByObject(sentMessage.details.data.fields.data.fields.id.id);
+            }
+        }
     }
 }
 
