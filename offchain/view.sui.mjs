@@ -5,19 +5,16 @@ const provider = new JsonRpcProvider(Network.DEVNET);
 const bcs = new BCS(getSuiMoveConfig());
 
 async function objects_test() {
-    // const objects = await provider.getObjectsOwnedByAddress(
-    //     '0x7f3b0d77188819024ff23080474e10dc18d575da'
-    // );
+    const env_object_id = '0x5f397cec72cb413405769953c9c5dc86c2bdab24';
+    const sender_object_id = '0x278c32836dda5857aeec557e0b64a94141351cf5';
 
-    // console.log(objects);
+    const objects_owned_by_env = await provider.getObjectsOwnedByObject(env_object_id);
+    // console.log("Objects owned by env: ")
+    // console.log(objects_owned_by_env);
 
-    const objects_owned_by_env = await provider.getObjectsOwnedByObject("0x7eda540f83fe90327a03cff9c02cded06e28dfb8");
-    console.log("Objects owned by env: ")
-    console.log(objects_owned_by_env);
-
-    const objects_owned_by_sender = await provider.getObjectsOwnedByObject("0x2c1596effa775f806111f6b3dead41fcab2e8bed");
-    console.log("Objects owned by sender: ")
-    console.log(objects_owned_by_sender);
+    const objects_owned_by_sender = await provider.getObjectsOwnedByObject(sender_object_id);
+    // console.log("Objects owned by sender: ")
+    // console.log(objects_owned_by_sender);
 
     var sentMsg = [];
     for (var idx in objects_owned_by_sender) {
@@ -29,8 +26,28 @@ async function objects_test() {
             // console.log(objIDCache.details.data.fields.value.length);
             for (var idx2 in objIDCache.details.data.fields.value) {
                 const sentMessage = await provider.getObject(objIDCache.details.data.fields.value[idx2]);
+                // It's payload below
                 console.log(sentMessage.details.data.fields.data);
-                const items = await provider.getObjectsOwnedByObject(sentMessage.details.data.fields.data.fields.id.id);
+
+                // const msgItems = await provider.getObjectsOwnedByObject(objIDCache.details.data.fields.value[idx2]);
+                const msgItemsWrapper = await provider.getObjectsOwnedByObject(sentMessage.details.data.fields.data.fields.id.id);
+                // console.log(msgItemsWrapper);
+                for (var itemIdx in msgItemsWrapper) {
+                    const msgItemsObject = await provider.getObjectsOwnedByObject(msgItemsWrapper[itemIdx].objectId);
+                    const msgItems = await provider.getObject(msgItemsObject[0].objectId);
+                    // message item
+                    console.log(msgItems.details.data.fields);
+
+                    const itemValuesObject = await provider.getObjectsOwnedByObject(msgItems.details.data.fields.id.id);
+                    for (var valueIdx in itemValuesObject) {
+                        const value = await provider.getObject(itemValuesObject[valueIdx].objectId);
+                        console.log(value.details.data.fields);
+                        console.log(Buffer.from(fromB64(value.details.data.fields.name)).toString());
+                        for (var vecStrIdx in value.details.data.fields.value) {
+                            console.log(Buffer.from(fromB64(value.details.data.fields.value[vecStrIdx])).toString());
+                        }
+                    }
+                }
             }
         }
     }

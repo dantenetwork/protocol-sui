@@ -41,6 +41,7 @@ module dante_types::env_recorder {
     }
 
     // just for test
+    #[test_only]
     public(friend) fun test_init(ctx: &mut TxContext) {
         let son = SendOutEnv {
             id: object::new(ctx),
@@ -100,7 +101,7 @@ module dante_types::env_recorder {
 }
 
 module dante_types::sender {
-    use dante_types::message_item;
+    use dante_types::message_item::{Self};
     use dante_types::payload::{Self, Payload};
     use dante_types::SQoS::{Self, SQoS};
     use dante_types::session::{Self, Session};
@@ -156,6 +157,7 @@ module dante_types::sender {
     }
 
     // just for test
+    #[test_only]
     fun test_init(ctx: &mut TxContext) {
         let sender = ProtocolSender {
             id: object::new(ctx),
@@ -292,6 +294,8 @@ module dante_types::sender {
         let contractName: vector<u8> = vector<u8>[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
         let actionName: vector<u8> =vector<u8>[0x01, 0x02, 0x03, 0x04];
         let data: Payload = payload::create_payload(ctx);
+        let item = message_item::create_item(b"Nika", message_item::sui_vec_string(), vector<vector<u8>>[b"Hello", b"Nice Day"], ctx);
+        payload::push_back_item(&mut data, item);
 
         send_message_out(toChain, sqos, contractName, actionName, data, send_out_env, protocol_sender, ctx);
     }
