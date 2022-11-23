@@ -1,5 +1,7 @@
-import { JsonRpcProvider, Network } from '@mysten/sui.js';
+import { JsonRpcProvider, Network, RawSigner, Ed25519Keypair, Secp256k1Keypair, LocalTxnDataSerializer } from '@mysten/sui.js';
 import {BCS, fromB64, toB64, getSuiMoveConfig } from '@mysten/bcs'
+
+import fs from 'fs';
 
 const provider = new JsonRpcProvider(Network.DEVNET);
 const bcs = new BCS(getSuiMoveConfig());
@@ -108,6 +110,40 @@ async function sent_message_event() {
     }
 }
 
+async function sui_move_call() {
+    // const data = fs.readFileSync('/home/xiyu/.sui/sui_config/sui.keystore', 'base64');
+    // console.log(fromB64(data));
+
+    let buf = Buffer.from('d9fb0917e1d83e2d42f14f6ac5588e755901150f0aa0953bbf529752e786f50c', 'hex');
+    // console.log(buf);
+    const keypair = Secp256k1Keypair.fromSecretKey(buf);
+    // console.log(keypair.keypair.publicKey);
+    // console.log(keypair.getPublicKey().toBytes());
+    // console.log(Buffer.from(keypair.keypair.publicKey).toString('hex'));
+    // console.log(fromB64(keypair.getPublicKey().toString()));
+    console.log(keypair.getPublicKey().toSuiAddress());
+    
+    try {
+        await provider.requestSuiFromFaucet('0x59ca90e94cb1427c30aca6c44c7ac1bc2e44dc38');
+    } catch (err) {
+        console.log(err);
+    }
+
+    return;
+
+    let signer = new RawSigner(keypair, provider);
+
+    const txn = await signer.executeMoveCall({
+        packageObjectId: "0xb0194cc9a90ba74c533f0663a6d80d1f9d226456",
+        module: 'sender',
+        function: 'test_send_message_out',
+        typeArguments: [],
+        arguments: ['0xe0247933a247b717159b9c7e42ae5affa4d2a9eb', '0xca61bd3778c4d6390288461003c12e4dc4059931'],
+        gasBudget: 30000,
+    });
+    console.log(getExecutionStatus(txn));
+}
+
 async function bcs_test() {
     // console.log(bcs.de(BCS.STRING, fromB64('UG9sa2Fkb3Q=')));
     console.log(Buffer.from(fromB64('UG9sa2Fkb3Q=')).toString());
@@ -120,4 +156,5 @@ async function bcs_test() {
 
 // await bcs_test();
 // await objects_test();
-await sent_message_event();
+// await sent_message_event();
+await sui_move_call();
