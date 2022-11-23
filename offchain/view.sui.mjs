@@ -1,9 +1,10 @@
 import { JsonRpcProvider, Network } from '@mysten/sui.js';
-import {BCS, fromB64, getSuiMoveConfig } from '@mysten/bcs'
+import {BCS, fromB64, toB64, getSuiMoveConfig } from '@mysten/bcs'
 
 const provider = new JsonRpcProvider(Network.DEVNET);
 const bcs = new BCS(getSuiMoveConfig());
 
+// using on-chain objects to record some meta informations to visit SentMessage
 async function objects_test() {
     const env_object_id = '0x5f397cec72cb413405769953c9c5dc86c2bdab24';
     const sender_object_id = '0x278c32836dda5857aeec557e0b64a94141351cf5';
@@ -53,6 +54,60 @@ async function objects_test() {
     }
 }
 
+// using event to visit SentMessage
+async function sent_message_event() {
+    const bcs = new BCS({
+        vectorType: 'vector',
+        addressLength: 20,
+        addressEncoding: 'hex'
+    });
+
+    const ESM_TypeName = 'EventSentMessage';
+    bcs.registerStructType(ESM_TypeName, {
+        id: BCS.ADDRESS,
+        toChain: BCS.STRING,
+        msgID: BCS.U128
+    });
+
+    // console.log(bcs);
+
+    // const eventQuery = {"MoveModule": {package: "0xb0194cc9a90ba74c533f0663a6d80d1f9d226456", module: 'sender'}};
+    // const allEvents = await provider.getEvents(eventQuery);
+    // console.log(allEvents.data);
+    // for (var idx in allEvents.data) {
+    //     // console.log(allEvents.data[idx].event);
+    //     if (undefined != allEvents.data[idx].event.moveEvent) {
+    //         if (allEvents.data[idx].event.moveEvent.type == '0xb0194cc9a90ba74c533f0663a6d80d1f9d226456::sender::EventSentMessage') {
+    //             console.log(fromB64('5PJqo5dOu6V15ShU3lVAQOgq+xaS3V9olVQlDeNnY/s='));
+    //             let event_data = bcs.de(ESM_TypeName, allEvents.data[idx].event.moveEvent.bcs, 'base64');
+    //             // console.log(event_data);
+    //             const sentMessage = await provider.getObject(event_data.id); 
+    //             console.log(sentMessage.details.data.fields);
+    //         }
+    //     }
+    // }
+
+    const eventQuery = {"MoveEvent": "0xb0194cc9a90ba74c533f0663a6d80d1f9d226456::sender::EventSentMessage"};
+    const sentMsgEvents = await provider.getEvents(eventQuery);
+    // console.log(sentMsgEvents);
+    for (var idx in sentMsgEvents.data) {
+        // console.log(fromB64(sentMsgEvents.data[idx].event.moveEvent.bcs));
+        console.log(sentMsgEvents.data[idx].event.moveEvent.bcs);
+        let event_data = bcs.de(ESM_TypeName, sentMsgEvents.data[idx].event.moveEvent.bcs, 'base64');
+        console.log(event_data);
+
+        if (event_data.msgID == 1) {
+            console.log("lucky!");
+        }
+        // const sentMessage = await provider.getObject(event_data.id);
+        // console.log(sentMessage.details.data.fields);
+
+        const serData = toB64(bcs.ser(ESM_TypeName, event_data).toBytes());
+        console.log(bcs.ser(ESM_TypeName, event_data).toString('base64'));
+        console.log(serData);
+    }
+}
+
 async function bcs_test() {
     // console.log(bcs.de(BCS.STRING, fromB64('UG9sa2Fkb3Q=')));
     console.log(Buffer.from(fromB64('UG9sa2Fkb3Q=')).toString());
@@ -64,4 +119,5 @@ async function bcs_test() {
 }
 
 // await bcs_test();
-await objects_test();
+// await objects_test();
+await sent_message_event();

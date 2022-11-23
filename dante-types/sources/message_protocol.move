@@ -582,6 +582,10 @@ module dante_types::SQoS {
         itemOpt
     }
 
+    // public entry fun copySQoS(_: SQoSItem) {
+
+    // }
+
     // serialization
     public fun sqos_item_to_bytes(sqosItem: &SQoSItem): vector<u8> {
         let rawData = message_item::number_to_be_rawbytes(&sqosItem.t);

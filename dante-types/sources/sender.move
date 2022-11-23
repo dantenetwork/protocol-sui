@@ -116,6 +116,7 @@ module dante_types::sender {
     use sui::transfer;
     use sui::dynamic_field;
     use sui::dynamic_object_field;
+    use sui::event;
 
     //Error
     const E_Invalid_MessageID: u64 = 0;
@@ -136,6 +137,12 @@ module dante_types::sender {
         signer: address,
 
         session: Session,
+    }
+
+    struct EventSentMessage has copy, drop {
+        id: ID,
+        toChain: vector<u8>,
+        msgID: u128,
     }
 
     struct ProtocolSender has key, store {
@@ -207,6 +214,12 @@ module dante_types::sender {
         let dofKey = toChain;
         vector::append<u8>(&mut dofKey, message_item::number_to_be_rawbytes(&msgID));
         dynamic_object_field::add(&mut protocol_sender.id, msgID, sentMessage);
+
+        event::emit(EventSentMessage {
+            id: suiID,
+            toChain,
+            msgID,
+        });
 
         env_recorder::create_context(msgID, env_recorder::chain_name(), sender, sender, sqos, session)
     }
@@ -339,6 +352,8 @@ module dante_types::sender {
             // let sendid2 = env_recorder::next_send_id(&mut env, toChain);
             // assert!(sendid1 == 1, 1);
             // assert!(sendid2 == 2, 2);
+
+            std::debug::print(&b"Luckly!");
 
             test_scenario::return_shared(env);
             test_scenario::return_shared(protocol_sender);
