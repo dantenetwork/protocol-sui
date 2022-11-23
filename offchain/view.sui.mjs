@@ -123,13 +123,12 @@ async function sui_move_call() {
     // console.log(fromB64(keypair.getPublicKey().toString()));
     console.log(keypair.getPublicKey().toSuiAddress());
     
-    try {
-        await provider.requestSuiFromFaucet('0x59ca90e94cb1427c30aca6c44c7ac1bc2e44dc38');
-    } catch (err) {
-        console.log(err);
-    }
-
-    return;
+    // try {
+    //     await provider.requestSuiFromFaucet('0x59ca90e94cb1427c30aca6c44c7ac1bc2e44dc38');
+    // } catch (err) {
+    //     console.log(err);
+    // }
+    // return;
 
     let signer = new RawSigner(keypair, provider);
 
