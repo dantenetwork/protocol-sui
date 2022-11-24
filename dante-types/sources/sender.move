@@ -102,7 +102,7 @@ module dante_types::env_recorder {
 
 module dante_types::sender {
     use dante_types::message_item::{Self};
-    use dante_types::payload::{Self, Payload};
+    use dante_types::payload::{Self, RawPayload};
     use dante_types::SQoS::{Self, SQoS};
     use dante_types::session::{Self, Session};
     use dante_types::env_recorder::{Self, SendOutEnv, ProtocolContext};
@@ -131,7 +131,7 @@ module dante_types::sender {
         sqos: SQoS,
         contractName: vector<u8>,
         actionName: vector<u8>,
-        data: Payload,
+        data: RawPayload,
 
         sender: address,
         signer: address,
@@ -180,7 +180,7 @@ module dante_types::sender {
                             sqos: SQoS,
                             contractName: vector<u8>,
                             actionName: vector<u8>,
-                            data: Payload,
+                            data: RawPayload,
                             session: Session,
                             protocol_sender: &mut ProtocolSender,
                             ctx: &mut TxContext): ProtocolContext {
@@ -230,7 +230,7 @@ module dante_types::sender {
                                     sqos: SQoS,
                                     contractName: vector<u8>,
                                     actionName: vector<u8>,
-                                    data: Payload, 
+                                    data: RawPayload, 
                                     send_out_env: &mut SendOutEnv, 
                                     protocol_sender: &mut ProtocolSender,
                                     ctx: &mut TxContext) {
@@ -249,7 +249,7 @@ module dante_types::sender {
                                 sqos: SQoS,
                                 contractName: vector<u8>,
                                 actionName: vector<u8>,
-                                data: Payload,
+                                data: RawPayload,
                                 commitment: Option<vector<u8>>, 
                                 send_out_env: &mut SendOutEnv, 
                                 protocol_sender: &mut ProtocolSender,
@@ -269,7 +269,7 @@ module dante_types::sender {
                                 sqos: SQoS,
                                 contractName: vector<u8>,
                                 actionName: vector<u8>,
-                                data: Payload,
+                                data: RawPayload,
                                 answer: Option<vector<u8>>, 
                                 protocol_context: ProtocolContext,
                                 send_out_env: &mut SendOutEnv, 
@@ -296,7 +296,7 @@ module dante_types::sender {
                                             option::none<vector<u8>>(),
                                             option::none<vector<u8>>());
         
-        raw_send_out_message(msgID, fromChain, SQoS::create_SQoS(), vector::empty<u8>(), vector::empty<u8>(), payload::create_payload(ctx), session, protocol_sender, ctx); 
+        raw_send_out_message(msgID, fromChain, SQoS::create_SQoS(), vector::empty<u8>(), vector::empty<u8>(), payload::create_raw_payload(), session, protocol_sender, ctx); 
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -306,9 +306,9 @@ module dante_types::sender {
         let sqos: SQoS = SQoS::create_SQoS();
         let contractName: vector<u8> = vector<u8>[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
         let actionName: vector<u8> =vector<u8>[0x01, 0x02, 0x03, 0x04];
-        let data: Payload = payload::create_payload(ctx);
-        let item = message_item::create_item(b"Nika", message_item::sui_vec_string(), vector<vector<u8>>[b"Hello", b"Nice Day"], ctx);
-        payload::push_back_item(&mut data, item);
+        let data: RawPayload = payload::create_raw_payload();
+        let item = message_item::create_raw_item(b"Nika", vector<vector<u8>>[b"Hello", b"Nice Day"]);
+        payload::push_back_raw_item(&mut data, item);
 
         send_message_out(toChain, sqos, contractName, actionName, data, send_out_env, protocol_sender, ctx);
     }
@@ -353,7 +353,7 @@ module dante_types::sender {
             // assert!(sendid1 == 1, 1);
             // assert!(sendid2 == 2, 2);
 
-            std::debug::print(&b"Luckly!");
+            // std::debug::print(&b"Luckly!");
 
             test_scenario::return_shared(env);
             test_scenario::return_shared(protocol_sender);

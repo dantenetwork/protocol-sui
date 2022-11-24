@@ -1,4 +1,4 @@
-import { JsonRpcProvider, Network, RawSigner, Ed25519Keypair, Secp256k1Keypair, LocalTxnDataSerializer } from '@mysten/sui.js';
+import { JsonRpcProvider, Network, RawSigner, Ed25519Keypair, Secp256k1Keypair, LocalTxnDataSerializer, getExecutionStatus } from '@mysten/sui.js';
 import {BCS, fromB64, toB64, getSuiMoveConfig } from '@mysten/bcs'
 
 import fs from 'fs';
@@ -6,10 +6,16 @@ import fs from 'fs';
 const provider = new JsonRpcProvider(Network.DEVNET);
 const bcs = new BCS(getSuiMoveConfig());
 
+const package_id = '0xd9946316f4d7a2828178ac38d5209298b381d893';
+const env_object_id = '0x3348b94cb733e60f6e73947854e69a2287d80f46';
+const sender_object_id = '0x115f9da0743e35d1fdc3ac53910dcda4e4712f1d';
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+/// To be deprecated
 // using on-chain objects to record some meta informations to visit SentMessage
 async function objects_test() {
-    const env_object_id = '0x5f397cec72cb413405769953c9c5dc86c2bdab24';
-    const sender_object_id = '0x278c32836dda5857aeec557e0b64a94141351cf5';
+    
 
     const objects_owned_by_env = await provider.getObjectsOwnedByObject(env_object_id);
     // console.log("Objects owned by env: ")
@@ -55,6 +61,8 @@ async function objects_test() {
         }
     }
 }
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
 
 // using event to visit SentMessage
 async function sent_message_event() {
@@ -89,7 +97,7 @@ async function sent_message_event() {
     //     }
     // }
 
-    const eventQuery = {"MoveEvent": "0xb0194cc9a90ba74c533f0663a6d80d1f9d226456::sender::EventSentMessage"};
+    const eventQuery = {"MoveEvent": package_id+"::sender::EventSentMessage"};
     const sentMsgEvents = await provider.getEvents(eventQuery);
     // console.log(sentMsgEvents);
     for (var idx in sentMsgEvents.data) {
@@ -101,8 +109,31 @@ async function sent_message_event() {
         if (event_data.msgID == 1) {
             console.log("lucky!");
         }
-        // const sentMessage = await provider.getObject(event_data.id);
+
+        const sentMessage = await provider.getObject(event_data.id);
         // console.log(sentMessage.details.data.fields);
+        console.log(sentMessage.details.data.fields.data.fields.rawItems[0].fields);
+
+        ///////////////////////////////////////////////
+        // decode value
+        if (sentMessage.details.data.fields.data.fields.rawItems[0].fields.type == 11) {
+            let itemVals = sentMessage.details.data.fields.data.fields.rawItems[0].fields.value;
+            console.log(itemVals);
+
+            const bcs4value = new BCS({
+                vectorType: 'vector<T>',
+                addressLength: 20,
+                addressEncoding: 'hex'
+            });
+
+            const deData = bcs4value.de('vector<vector<u8>>', itemVals, 'base64');
+            // console.log(deData);
+            for (var valIdx in deData) {
+                let val = deData[valIdx];
+                console.log(Buffer.from(val).toString());
+            }
+        }
+        ///////////////////////////////////////////////
 
         const serData = toB64(bcs.ser(ESM_TypeName, event_data).toBytes());
         console.log(bcs.ser(ESM_TypeName, event_data).toString('base64'));
@@ -133,11 +164,11 @@ async function sui_move_call() {
     let signer = new RawSigner(keypair, provider);
 
     const txn = await signer.executeMoveCall({
-        packageObjectId: "0xb0194cc9a90ba74c533f0663a6d80d1f9d226456",
+        packageObjectId: package_id,
         module: 'sender',
         function: 'test_send_message_out',
         typeArguments: [],
-        arguments: ['0xe0247933a247b717159b9c7e42ae5affa4d2a9eb', '0xca61bd3778c4d6390288461003c12e4dc4059931'],
+        arguments: [env_object_id, sender_object_id],
         gasBudget: 30000,
     });
     console.log(getExecutionStatus(txn));
@@ -145,15 +176,77 @@ async function sui_move_call() {
 
 async function bcs_test() {
     // console.log(bcs.de(BCS.STRING, fromB64('UG9sa2Fkb3Q=')));
-    console.log(Buffer.from(fromB64('UG9sa2Fkb3Q=')).toString());
-    console.log(fromB64('UG9sa2Fkb3Q='));
+    // console.log(Buffer.from(fromB64('UG9sa2Fkb3Q=')).toString());
+    // console.log(fromB64('UG9sa2Fkb3Q='));
 
-    let ser1 = bcs.ser(BCS.STRING, 'Polkadot').toBytes();
-    console.log(ser1);
-    console.log(bcs.de(BCS.STRING, ser1));
+    // let ser1 = bcs.ser(BCS.STRING, 'Polkadot').toBytes();
+    // console.log(ser1);
+    // console.log(bcs.de(BCS.STRING, ser1));
+
+    const bcs4value = new BCS({
+        vectorType: 'vector<vector<u8>>',
+        addressLength: 20,
+        addressEncoding: 'hex'
+    });
+
+    let valBytes = bcs4value.ser('vector<vector<u8>>', [Buffer.from("Hello"), Buffer.from("Nice Day")]);
+    // console.log(valBytes.toString('base64'));
+    // console.log(valBytes.toBytes());
+    // console.log(new Uint8Array(Buffer.from(valBytes.toString('base64'))));
+    // return;
+
+    const bcs = new BCS({
+        vectorType: 'vector<u8>',
+        addressLength: 20,
+        addressEncoding: 'hex'
+    });
+
+    const RMI_TypeName = 'RawMessageItem';
+    bcs.registerStructType(RMI_TypeName, {
+        name: BCS.STRING,
+        type: BCS.U8,
+        value: BCS.STRING
+    });
+
+    const rmiData = {
+        name: 'Nika',
+        type: 11,
+        value: Buffer.from(valBytes.toBytes()).toString('base64')
+    };
+
+    const serData = bcs.ser(RMI_TypeName, rmiData).toBytes();
+    console.log(serData);
+    console.log(bcs.ser(RMI_TypeName, rmiData).toString('base64'));
+
+    const deData = bcs.de(RMI_TypeName, serData, 'base64');
+    console.log(deData);
+    // console.log(bcs4value.de('vector<vector<u8>>', valBytes.toBytes(), 'base64'));
+    console.log(bcs4value.de('vector<vector<u8>>', new Uint8Array(Buffer.from(deData.value, 'base64')), 'base64'));
+}
+
+async function test_bcs_bcs() {
+    const bcs4value = new BCS({
+        vectorType: 'vector<vector<u8>>',
+        addressLength: 20,
+        addressEncoding: 'hex'
+    });
+
+    // const valName = 'SuiBCS';
+
+    // bcs4value.registerStructType(valName, {
+    //     bytes: BCS.STRING,
+    // });
+
+    let ar = new Uint8Array(Buffer.from('eWFEIGVjaU4Ib2xsZUgFAg=='));
+    console.log(ar.reverse());
+
+    // const deBCS = bcs4value.de('vector<vector<u8>>', ar.reverse(), 'base64');
+    // console.log(deBCS);
 }
 
 // await bcs_test();
 // await objects_test();
-// await sent_message_event();
-await sui_move_call();
+await sent_message_event();
+// await sui_move_call();
+
+// await test_bcs_bcs();

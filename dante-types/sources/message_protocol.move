@@ -77,6 +77,9 @@ module dante_types::message_item {
     // value name
     const VALUE_NAME: vector<u8> = b"value";
 
+    /////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////
+    /// To be deprecated
     // MessageItem
     struct MessageItem has key, store {
         id: UID,
@@ -215,13 +218,15 @@ module dante_types::message_item {
 
         output
     }
+    /////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////
 
     ///////////////////////////////////////////////////////////////////////////////////////
     /// RawMessageItem without object
     struct RawMessageItem has copy, drop, store {
         name: vector<u8>,
         type: u8,
-        value: sui::bcs::BCS,
+        value: vector<u8>,
     }
 
     public fun create_raw_item<T: copy + drop + store>(name: vector<u8>, raw_v: T): RawMessageItem {
@@ -229,7 +234,7 @@ module dante_types::message_item {
         assert!(option::is_some(&tID), TYPE_ERROR);
 
         let type = *option::borrow(&tID);
-        let suiBCSVal =  bcs::new(bcs::to_bytes(&raw_v));
+        let suiBCSVal =  bcs::to_bytes(&raw_v);
 
         RawMessageItem {
             name,
@@ -242,11 +247,174 @@ module dante_types::message_item {
     public fun raw_item_name(rawItem: &RawMessageItem): vector<u8> {rawItem.name}
     public fun raw_item_type(rawItem: &RawMessageItem): u8 {rawItem.type}
 
-    // public fun get_raw_item_value<T: copy, drop, store>(rawItem: &RawMessageItem):  Option<T>{
-    //     let output = option::none<T>();
+    public fun de_raw_item(rawData: &vector<u8>): RawMessageItem {
+        let suibcsbytes = bcs::new(*rawData);
 
-    //     output
-    // }
+        RawMessageItem {
+            name: bcs::peel_vec_u8(&mut suibcsbytes),
+            type: bcs::peel_u8(&mut suibcsbytes),
+            value: bcs::peel_vec_u8(&mut suibcsbytes),
+        }
+    }
+
+    /////////////////////////
+    public fun raw_item_value_u8(rawItem: &RawMessageItem):  Option<u8>{
+        let output = option::none<u8>();
+
+        if (rawItem.type == sui_u8()) {
+            let suibcsbytes = bcs::new(rawItem.value);
+            option::fill(&mut output, bcs::peel_u8(&mut suibcsbytes));
+        };
+
+        output
+    }
+
+    public fun raw_item_value_vec_u8(rawItem: &RawMessageItem):  Option<vector<u8>>{
+        let output = option::none<vector<u8>>();
+
+        if (rawItem.type == sui_vec_u8()) {
+            let suibcsbytes = bcs::new(rawItem.value);
+            option::fill(&mut output, bcs::peel_vec_u8(&mut suibcsbytes));
+        };
+
+        output
+    }
+
+    /////////////////////////
+    public fun raw_item_value_u64(rawItem: &RawMessageItem):  Option<u64>{
+        let output = option::none<u64>();
+
+        if (rawItem.type == sui_u64()) {
+            let suibcsbytes = bcs::new(rawItem.value);
+            option::fill(&mut output, bcs::peel_u64(&mut suibcsbytes));
+        };
+
+        output
+    }
+
+    public fun raw_item_value_vec_u64(rawItem: &RawMessageItem):  Option<vector<u64>>{
+        let output = option::none<vector<u64>>();
+
+        if (rawItem.type == sui_vec_u64()) {
+            let suibcsbytes = bcs::new(rawItem.value);
+            option::fill(&mut output, bcs::peel_vec_u64(&mut suibcsbytes));
+        };
+
+        output
+    }
+
+    /////////////////////////
+    public fun raw_item_value_u128(rawItem: &RawMessageItem):  Option<u128>{
+        let output = option::none<u128>();
+
+        if (rawItem.type == sui_u128()) {
+            let suibcsbytes = bcs::new(rawItem.value);
+            option::fill(&mut output, bcs::peel_u128(&mut suibcsbytes));
+        };
+
+        output
+    }
+
+    public fun raw_item_value_vec_u128(rawItem: &RawMessageItem):  Option<vector<u128>>{
+        let output = option::none<vector<u128>>();
+
+        if (rawItem.type == sui_vec_u128()) {
+            let suibcsbytes = bcs::new(rawItem.value);
+            option::fill(&mut output, bcs::peel_vec_u128(&mut suibcsbytes));
+        };
+
+        output
+    }
+
+    /////////////////////////
+    public fun raw_item_value_string(rawItem: &RawMessageItem): Option<vector<u8>> {
+        let output = option::none<vector<u8>>();
+
+        if (rawItem.type == sui_string()) {
+            let suibcsbytes = bcs::new(rawItem.value);
+            option::fill(&mut output, bcs::peel_vec_u8(&mut suibcsbytes));
+        };
+
+        output
+    }
+
+    public fun raw_item_value_vec_string(rawItem: &RawMessageItem): Option<vector<vector<u8>>> {
+        let output = option::none<vector<vector<u8>>>();
+
+        if (rawItem.type == sui_vec_string()) {
+            let suibcsbytes = bcs::new(rawItem.value);
+            option::fill(&mut output, bcs::peel_vec_vec_u8(&mut suibcsbytes));
+        };
+
+        output
+    }
+
+    /////////////////////////
+    public fun raw_item_value_address(rawItem: &RawMessageItem): Option<address> {
+        let output = option::none<address>();
+
+        if (rawItem.type == sui_address()) {
+            let suibcsbytes = bcs::new(rawItem.value);
+            option::fill(&mut output, bcs::peel_address(&mut suibcsbytes));
+        };
+
+        output
+    }
+
+    /////////////////////////
+    public fun raw_item_to_rawbytes(item: &RawMessageItem): vector<u8> {
+        let output = vector::empty<u8>();
+        vector::append<u8>(&mut output, item.name);
+        // vector::push_back<u8>(&mut output, item.type);
+
+        if (item.type == Sui_String) {
+            let value = raw_item_value_string(item);
+            vector::append<u8>(&mut output, string_to_rawbytes(option::borrow(&value)));
+
+        } else if (item.type == Sui_U8) {
+            let value = raw_item_value_u8(item);
+            vector::push_back<u8>(&mut output, *option::borrow(&value));
+
+        // } else if (item.type == Sui_U16) {
+        //     let value = dynamic_field::borrow<vector<u8>, u16>(&item.id, b"value");
+        //     vector::append<u8>(&mut output, number_to_be_rawbytes(value));
+
+        // } else if (item.type == Sui_U32) {
+        //     let value = dynamic_field::borrow<vector<u8>, u32>(&item.id, b"value");
+        //     vector::append<u8>(&mut output, number_to_be_rawbytes(value));
+
+        } else if (item.type == Sui_U64) {
+            let value = raw_item_value_u64(item);
+            vector::append<u8>(&mut output, number_to_be_rawbytes(option::borrow(&value)));
+        } else if (item.type == Sui_U128) {
+            let value = raw_item_value_u128(item);
+            vector::append<u8>(&mut output, number_to_be_rawbytes(option::borrow(&value)));
+        } else if (item.type == Sui_Vec_String) {
+            let value = raw_item_value_vec_string(item);
+            vector::append<u8>(&mut output, vec_string_to_rawbytes(option::borrow(&value)));
+        } else if (item.type == Sui_Vec_U8) {
+            let value = raw_item_value_vec_u8(item);
+            vector::append<u8>(&mut output, *option::borrow(&value));
+        // } else if (item.type == Sui_Vec_U16) {
+        //     let value = dynamic_field::borrow<vector<u8>, vector<u16>>(&item.id, b"value");
+        //     vector::append<u8>(&mut output, vec_number_to_rawbytes(value));
+
+        // } else if (item.type == Sui_Vec_U32) {
+        //     let value = dynamic_field::borrow<vector<u8>, vector<u32>>(&item.id, b"value");
+        //     vector::append<u8>(&mut output, vec_number_to_rawbytes(value));
+        } else if (item.type == Sui_Vec_U64) {
+            let value = raw_item_value_vec_u64(item);
+            vector::append<u8>(&mut output, vec_number_to_rawbytes(option::borrow(&value)));
+        } else if (item.type == Sui_Vec_U128) {
+            let value = raw_item_value_vec_u128(item);
+            vector::append<u8>(&mut output, vec_number_to_rawbytes(option::borrow(&value)));
+        } else if (item.type == Sui_Address) {
+            let value = raw_item_value_address(item);
+            vector::append<u8>(&mut output, address_to_rawbytes(option::borrow(&value)));
+        };
+
+        output
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////
     /// tool functions
@@ -364,19 +532,45 @@ module dante_types::message_item {
         let x32_be_bytes = number_to_be_rawbytes(&x32);
         assert!(x32_be_bytes == vector<u8>[0x00, 0x11, 0x22, 0x33], TYPE_ERROR);
     }
+
+    #[test]
+    public fun test_raw_message_item() {
+        let rawVU8 = vector<u8>[4,  78, 105, 107,  97,  11,  16,
+                                2,   5,  72, 101, 108, 108, 111,
+                                8,  78, 105,  99, 101,  32,  68,
+                                97, 121];
+
+        let suibcsbytes = bcs::new(rawVU8);
+        assert!(b"Nika" == bcs::peel_vec_u8(&mut suibcsbytes), 0);
+        assert!(11 == bcs::peel_u8(&mut suibcsbytes), 0);
+        let valuebcsbytes = bcs::peel_vec_u8(&mut suibcsbytes);
+        std::debug::print(&valuebcsbytes);
+        // vector::reverse(&mut valueB64bytes);
+        let valbcsbytes = bcs::new(valuebcsbytes);
+        assert!(vector<vector<u8>>[b"Hello", b"Nice Day"] == bcs::peel_vec_vec_u8(&mut valbcsbytes), 0);
+    }
+
+    #[test]
+    public fun test_raw_item_vec_vec() {
+        let item = create_raw_item(b"Nika", vector<vector<u8>>[b"Hello", b"Nice Day"]);
+        std::debug::print(&item.value);
+    }
 }
 
 module dante_types::payload {
     use sui::object::{Self, UID};
     use sui::dynamic_object_field;
     use sui::tx_context::TxContext;
-    use dante_types::message_item::{Self, MessageItem};
+    use dante_types::message_item::{Self, MessageItem, RawMessageItem};
     use std::option::{Self, Option};
     use std::vector;
 
     // Error defination
     const NOT_Empty_OBJECT: u64 = 0;
 
+    /////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////
+    /// To be deprecated
     struct Payload has key, store {
         id: UID,
         
@@ -448,6 +642,49 @@ module dante_types::payload {
 
         output
     }
+    /////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    struct RawPayload has copy, drop, store {
+        rawItems: vector<RawMessageItem>,
+    }
+
+    public fun create_raw_payload(): RawPayload {
+        RawPayload {
+            rawItems: vector<RawMessageItem>[],
+        }
+    }
+
+    // serialization
+    public fun raw_payload_to_rawbytes(payload: &RawPayload): vector<u8> {
+        let output = vector::empty<u8>();
+
+        let idx: u64 = 0;
+        while (idx < vector::length(&payload.rawItems)) {
+            let itemRef = vector::borrow(&payload.rawItems, idx);
+            vector::append<u8>(&mut output, message_item::raw_item_to_rawbytes(itemRef));
+            idx = idx + 1;
+        };
+
+        output
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    public fun push_back_raw_item(payload: &mut RawPayload, item: RawMessageItem) {
+        vector::push_back(&mut payload.rawItems, item);
+    }
+
+    public fun pop_back_raw_item(payload: &mut RawPayload): Option<RawMessageItem>{
+        let output = option::none();
+
+        if (vector::length(&payload.rawItems) > 0) {
+            let item = vector::pop_back(&mut payload.rawItems);
+            option::fill<RawMessageItem>(&mut output, item);
+        };
+
+        output
+    }
 
     #[test]
     public fun test_payload() {
@@ -476,6 +713,21 @@ module dante_types::payload {
         };
 
         test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_raw_payload() {
+        let x128: u128 = 0xff223344556677889900112233445566;
+        let item = message_item::create_raw_item(b"Hello Nika", x128);
+        let payload = create_raw_payload();
+        push_back_raw_item(&mut payload, item);
+
+        let payloadBytes = raw_payload_to_rawbytes(&payload);
+
+        let expectBytes = b"Hello Nika";
+        // vector::append<u8>(&mut expectBytes, vector<u8>[message_item::sui_u128(), 0xff, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
+        vector::append<u8>(&mut expectBytes, vector<u8>[0xff, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
+        assert!(payloadBytes == expectBytes, 0);
     }
 }
 
