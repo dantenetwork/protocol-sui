@@ -42,9 +42,9 @@ module dante_types::message_item {
     public fun sui_vec_string(): u8 {Sui_Vec_String}
     public fun sui_vec_string_type_name(): type_name::TypeName {type_name::get<vector<vector<u8>>>()}
 
-    const Sui_Vec_U8: u8 = 12;
-    public fun sui_vec_u8(): u8 {Sui_Vec_U8}
-    public fun sui_vec_u8_type_name(): type_name::TypeName {type_name::get<vector<u8>>()}
+    // const Sui_Vec_U8: u8 = 12;
+    // public fun sui_vec_u8(): u8 {Sui_Vec_U8}
+    // public fun sui_vec_u8_type_name(): type_name::TypeName {type_name::get<vector<u8>>()}
     // const Sui_Vec_U16: u8 = 13;
     // public fun sui_vec_u16(): u8 {Sui_Vec_U16}
     // const Sui_Vec_U32: u8 = 14;
@@ -141,8 +141,8 @@ module dante_types::message_item {
             x = dynamic_field::exists_with_type<vector<u8>, u128>(&item.id, b"value");
         } else if (item.type == Sui_Vec_String) {
             x = dynamic_field::exists_with_type<vector<u8>, vector<vector<u8>>>(&item.id, b"value");
-        } else if (item.type == Sui_Vec_U8) {
-            x = dynamic_field::exists_with_type<vector<u8>, vector<u8>>(&item.id, b"value");
+        // } else if (item.type == Sui_Vec_U8) {
+        //     x = dynamic_field::exists_with_type<vector<u8>, vector<u8>>(&item.id, b"value");
         // } else if (item.type == Sui_Vec_U16) {
         //     x = dynamic_field::exists_with_type<vector<u8>, vector<u16>>(&item.id, b"value");
         // } else if (item.type == Sui_Vec_U32) {
@@ -191,9 +191,9 @@ module dante_types::message_item {
             let value = dynamic_field::borrow<vector<u8>, vector<vector<u8>>>(&item.id, b"value");
             vector::append<u8>(&mut output, vec_string_to_rawbytes(value));
 
-        } else if (item.type == Sui_Vec_U8) {
-            let value = dynamic_field::borrow<vector<u8>, vector<u8>>(&item.id, b"value");
-            vector::append<u8>(&mut output, *value);
+        // } else if (item.type == Sui_Vec_U8) {
+        //     let value = dynamic_field::borrow<vector<u8>, vector<u8>>(&item.id, b"value");
+        //     vector::append<u8>(&mut output, *value);
 
         // } else if (item.type == Sui_Vec_U16) {
         //     let value = dynamic_field::borrow<vector<u8>, vector<u16>>(&item.id, b"value");
@@ -269,16 +269,16 @@ module dante_types::message_item {
         output
     }
 
-    public fun raw_item_value_vec_u8(rawItem: &RawMessageItem):  Option<vector<u8>>{
-        let output = option::none<vector<u8>>();
+    // public fun raw_item_value_vec_u8(rawItem: &RawMessageItem):  Option<vector<u8>>{
+    //     let output = option::none<vector<u8>>();
 
-        if (rawItem.type == sui_vec_u8()) {
-            let suibcsbytes = bcs::new(rawItem.value);
-            option::fill(&mut output, bcs::peel_vec_u8(&mut suibcsbytes));
-        };
+    //     if (rawItem.type == sui_vec_u8()) {
+    //         let suibcsbytes = bcs::new(rawItem.value);
+    //         option::fill(&mut output, bcs::peel_vec_u8(&mut suibcsbytes));
+    //     };
 
-        output
-    }
+    //     output
+    // }
 
     /////////////////////////
     public fun raw_item_value_u64(rawItem: &RawMessageItem):  Option<u64>{
@@ -392,9 +392,9 @@ module dante_types::message_item {
         } else if (item.type == Sui_Vec_String) {
             let value = raw_item_value_vec_string(item);
             vector::append<u8>(&mut output, vec_string_to_rawbytes(option::borrow(&value)));
-        } else if (item.type == Sui_Vec_U8) {
-            let value = raw_item_value_vec_u8(item);
-            vector::append<u8>(&mut output, *option::borrow(&value));
+        // } else if (item.type == Sui_Vec_U8) {
+        //     let value = raw_item_value_vec_u8(item);
+        //     vector::append<u8>(&mut output, *option::borrow(&value));
         // } else if (item.type == Sui_Vec_U16) {
         //     let value = dynamic_field::borrow<vector<u8>, vector<u16>>(&item.id, b"value");
         //     vector::append<u8>(&mut output, vec_number_to_rawbytes(value));
@@ -470,8 +470,8 @@ module dante_types::message_item {
             option::fill(&mut output, sui_u128());
         } else if (sui_type_name == sui_vec_string_type_name()) {
             option::fill(&mut output, sui_vec_string());
-        } else if (sui_type_name == sui_vec_u8_type_name()) {
-            option::fill(&mut output, sui_vec_u8());
+        // } else if (sui_type_name == sui_vec_u8_type_name()) {
+        //     option::fill(&mut output, sui_vec_u8());
         } else if (sui_type_name == sui_vec_u64_type_name()) {
             option::fill(&mut output, sui_vec_u64());
         } else if (sui_type_name == sui_vec_u128_type_name()) {

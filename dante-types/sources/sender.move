@@ -300,6 +300,30 @@ module dante_types::sender {
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
+    /// serialization
+    public fun into_raw_bytes(sentMessage: &SentMessage): vector<u8> {
+        let output = vector::empty<u8>();
+
+        vector::append(&mut output, message_item::number_to_be_rawbytes(&sentMessage.msgID));
+        vector::append(&mut output, sentMessage.fromChain);
+        vector::append(&mut output, sentMessage.toChain);
+
+        vector::append(&mut output, SQoS::sqos_to_bytes(&sentMessage.sqos));
+
+        vector::append(&mut output, sentMessage.contractName);
+        vector::append(&mut output, sentMessage.actionName);
+
+        vector::append(&mut output, payload::raw_payload_to_rawbytes(&sentMessage.data));
+
+        vector::append(&mut output, message_item::address_to_rawbytes(&sentMessage.sender));
+        vector::append(&mut output, message_item::address_to_rawbytes(&sentMessage.signer));
+
+        vector::append(&mut output, session::session_to_rawbytes(&sentMessage.session));
+
+        output
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
     /// entry test
     public entry fun test_send_message_out(send_out_env: &mut SendOutEnv, protocol_sender: &mut ProtocolSender, ctx: &mut TxContext) {
         let toChain: vector<u8> = b"Polkadot";
@@ -357,6 +381,64 @@ module dante_types::sender {
 
             test_scenario::return_shared(env);
             test_scenario::return_shared(protocol_sender);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    const ENCODE_ERROR: u64 = 0;
+
+    #[test]
+    public fun test_sent_message_rawbytes() {
+        use sui::test_scenario;
+        use sui::transfer;
+
+        let alice = @0x010203;
+        // let bob = @0xB0B1;
+
+        let scenario_val = test_scenario::begin(alice);
+        let scenario = &mut scenario_val;
+
+        test_scenario::next_tx(scenario, alice);
+        {
+            let sqos = SQoS::create_SQoS();
+            SQoS::add_sqos_item(&mut sqos, SQoS::create_item(SQoS::sqos_challenge(), vector<u8>[1, 2, 3]));
+
+            let data = payload::create_raw_payload();
+            payload::push_back_raw_item(&mut data, message_item::create_raw_item(b"Nika", vector<vector<u8>>[b"Hello", b"Nice Day"]));
+            payload::push_back_raw_item(&mut data, message_item::create_raw_item(b"Luffy", vector<u128>[73, 37]));
+
+            let sender = test_scenario::sender(scenario);
+
+            let session = session::create_session(1, 3, option::none(), option::some(vector<u8>[49, 49]), option::none());
+
+            let sentMessage = SentMessage {
+                                        id: object::new(test_scenario::ctx(scenario)),
+                                        msgID: 1,
+                                        fromChain: env_recorder::chain_name(),
+                                        toChain: b"Polkadot",
+                                        sqos,
+                                        contractName: vector<u8>[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                        actionName: vector<u8>[0, 0, 0, 0],
+                                        data,
+                                        sender,
+                                        signer: sender,
+                                        session,
+                                    };
+
+            std::debug::print(&into_raw_bytes(&sentMessage));
+
+            let except_vec = vector<u8>[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 
+                                83, 85, 73, 95, 84, 69, 83, 84, 78, 69, 84, 80, 111, 108, 107, 97, 100, 111, 116, 1, 1, 2, 3, 
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+                                78, 105, 107, 97, 72, 101, 108, 108, 111, 78, 105, 99, 101, 32, 68, 97, 121, 76, 117, 102, 102, 121, 
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 73, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 49, 49];
+
+            assert!(into_raw_bytes(&sentMessage) == except_vec, ENCODE_ERROR);
+            
+            transfer::transfer(sentMessage, alice);
         };
 
         test_scenario::end(scenario_val);
