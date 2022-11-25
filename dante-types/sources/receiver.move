@@ -10,5 +10,13 @@ module dante_types::receiver {
         dante_ctx: ProtocolContext,
     }
 
-    
+    public entry fun submit_message() {
+
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+    /// private functions
+    fun message_verify() {
+
+    }
 }
