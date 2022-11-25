@@ -392,6 +392,9 @@ module dante_types::sender {
     public fun test_sent_message_rawbytes() {
         use sui::test_scenario;
         use sui::transfer;
+        use sui::ecdsa;
+
+        use std::hash;
 
         let alice = @0x010203;
         // let bob = @0xB0B1;
@@ -426,7 +429,7 @@ module dante_types::sender {
                                         session,
                                     };
 
-            std::debug::print(&into_raw_bytes(&sentMessage));
+            // std::debug::print(&into_raw_bytes(&sentMessage));
 
             let except_vec = vector<u8>[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 
                                 83, 85, 73, 95, 84, 69, 83, 84, 78, 69, 84, 80, 111, 108, 107, 97, 100, 111, 116, 1, 1, 2, 3, 
@@ -437,6 +440,15 @@ module dante_types::sender {
                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 49, 49];
 
             assert!(into_raw_bytes(&sentMessage) == except_vec, ENCODE_ERROR);
+
+            let sm_hash_1 = ecdsa::keccak256(&into_raw_bytes(&sentMessage));
+            std::debug::print(&sm_hash_1);
+
+            let sm_hash_2 = hash::sha2_256(into_raw_bytes(&sentMessage));
+            std::debug::print(&sm_hash_2);
+
+            let sm_hash_3 = hash::sha3_256(into_raw_bytes(&sentMessage));
+            std::debug::print(&sm_hash_3);
             
             transfer::transfer(sentMessage, alice);
         };
