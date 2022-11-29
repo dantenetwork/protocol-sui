@@ -213,7 +213,7 @@ module dante_types::sender {
 
         let dofKey = toChain;
         vector::append<u8>(&mut dofKey, message_item::number_to_be_rawbytes(&msgID));
-        dynamic_object_field::add(&mut protocol_sender.id, msgID, sentMessage);
+        dynamic_object_field::add(&mut protocol_sender.id, dofKey, sentMessage);
 
         event::emit(EventSentMessage {
             id: suiID,
