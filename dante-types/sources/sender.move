@@ -15,6 +15,9 @@ module dante_types::env_recorder {
     const CHAIN_NAME: vector<u8> = b"SUI_TESTNET";
     public fun chain_name(): vector<u8> {CHAIN_NAME}
 
+    const MAX_U128: u128 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+    public fun max_u128(): u128 {MAX_U128}
+
     struct SendOutEnv has key, store {
         id: UID,
         // dynamic field: send out nonce

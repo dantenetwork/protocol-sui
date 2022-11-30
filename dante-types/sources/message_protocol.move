@@ -73,6 +73,7 @@ module dante_types::message_item {
 
     // Error 
     const TYPE_ERROR: u64 = 0;
+    const LENGTH_ERROR: u64 = 1;
 
     // value name
     const VALUE_NAME: vector<u8> = b"value";
@@ -247,7 +248,7 @@ module dante_types::message_item {
     public fun raw_item_name(rawItem: &RawMessageItem): vector<u8> {rawItem.name}
     public fun raw_item_type(rawItem: &RawMessageItem): u8 {rawItem.type}
 
-    public fun de_raw_item(rawData: &vector<u8>): RawMessageItem {
+    public fun de_item_from_bcs(rawData: &vector<u8>): RawMessageItem {
         let suibcsbytes = bcs::new(*rawData);
 
         RawMessageItem {
@@ -424,6 +425,48 @@ module dante_types::message_item {
         x
     }
 
+    public fun u32_from_be_bytes(bytes: &vector<u8>): u32 {
+        assert!(vector::length(bytes) == 4, LENGTH_ERROR);
+
+        let oriBytes = *bytes;
+
+        let (value, i) = (0u32, 0u8);
+        while (i < 32) {
+            value = value + ((vector::pop_back(&mut oriBytes) as u32) << i);
+            i = i + 8;
+        };
+
+        value
+    }
+
+    public fun u64_from_be_bytes(bytes: &vector<u8>): u64 {
+        assert!(vector::length(bytes) == 8, LENGTH_ERROR);
+
+        let oriBytes = *bytes;
+
+        let (value, i) = (0u64, 0u8);
+        while (i < 64) {
+            value = value + ((vector::pop_back(&mut oriBytes) as u64) << i);
+            i = i + 8;
+        };
+
+        value
+    }
+
+    public fun u128_from_be_bytes(bytes: &vector<u8>): u128 {
+        assert!(vector::length(bytes) == 16, LENGTH_ERROR);
+
+        let oriBytes = *bytes;
+
+        let (value, i) = (0u128, 0u8);
+        while (i < 128) {
+            value = value + ((vector::pop_back(&mut oriBytes) as u128) << i);
+            i = i + 8;
+        };
+
+        value
+    }
+
     public fun string_to_rawbytes(value: &vector<u8>): vector<u8> {
         *value
     }
@@ -548,6 +591,12 @@ module dante_types::message_item {
         // vector::reverse(&mut valueB64bytes);
         let valbcsbytes = bcs::new(valuebcsbytes);
         assert!(vector<vector<u8>>[b"Hello", b"Nice Day"] == bcs::peel_vec_vec_u8(&mut valbcsbytes), 0);
+
+        let item = de_item_from_bcs(&rawVU8);
+        assert!(b"Nika" == item.name, 0);
+        assert!(11 == item.type, 0);
+        let bcs_value = bcs::new(item.value);
+        assert!(vector<vector<u8>>[b"Hello", b"Nice Day"] == bcs::peel_vec_vec_u8(&mut bcs_value), 0);
     }
 
     #[test]
@@ -732,9 +781,12 @@ module dante_types::payload {
 }
 
 module dante_types::session {
+    use dante_types::message_item;
+
+    use sui::bcs;
+
     use std::option::{Self, Option}; 
     use std::vector;
-    use dante_types::message_item;
 
     const Undefined: u8 = 0;
     public fun sess_undefined(): u8 {Undefined}
@@ -772,6 +824,35 @@ module dante_types::session {
                 (Local_Error == type) || 
                 (Remote_Error == type), TYPE_ERROR);
         
+        Session {
+            id,
+            type,
+            callback,
+            commitment,
+            answer,
+        }
+    }
+
+    public fun de_item_from_bcs(raw_bcs: &vector<u8>): Session {
+        let suiBCS = bcs::new(*raw_bcs);
+
+        let id = bcs::peel_u128(&mut suiBCS);
+        let type = bcs::peel_u8(&mut suiBCS);
+        let callback = option::none();
+        if (bcs::peel_bool(&mut suiBCS)) {
+            callback = option::some(bcs::peel_vec_u8(&mut suiBCS));
+        };
+
+        let commitment = option::none();
+        if (bcs::peel_bool(&mut suiBCS)) {
+            commitment = option::some(bcs::peel_vec_u8(&mut suiBCS));
+        };
+
+        let answer = option::none();
+        if (bcs::peel_bool(&mut suiBCS)) {
+            answer = option::some(bcs::peel_vec_u8(&mut suiBCS));
+        };
+
         Session {
             id,
             type,
@@ -826,15 +907,37 @@ module dante_types::session {
 
         assert!(rawData == vecData, TYPE_ERROR);
     }
+
+    #[test]
+    public fun test_de_bcs_for_session() {
+        let oriSess = Session {
+            id: 0xffff,
+            type: 3,
+            callback: option::some(vector<u8>[0xaa, 0xbb]),
+            commitment: option::none(),
+            answer: option::none(),
+        };
+
+        let sessBytes = bcs::to_bytes(&oriSess);
+        let deSess = de_item_from_bcs(&sessBytes);
+
+        assert!(0xffff == deSess.id, 0);
+        assert!(3 == deSess.type, 0);
+        assert!(option::some(vector<u8>[0xaa, 0xbb]) == deSess.callback, 0);
+        assert!(option::is_none(&deSess.commitment), 0);
+        assert!(option::is_none(&deSess.answer), 0);
+    }
 }
 
 module dante_types::SQoS {
+    use dante_types::message_item;
+
     // use sui::object::{Self, UID};
     // use sui::tx_context::{TxContext};
+    use sui::bcs;
 
     use std::vector;
     use std::option::{Self, Option};
-    use dante_types::message_item;
 
     const TypeLow: u8 = 0;
 
@@ -877,6 +980,18 @@ module dante_types::SQoS {
 
     public fun create_item(t: u8, v: vector<u8>): SQoSItem {
         assert!((TypeLow <= t) && (t <= TypeHigh), TYPE_ERROR);
+        SQoSItem {
+            t,
+            v,
+        }
+    }
+
+    public fun de_item_from_bcs(raw_bcs: &vector<u8>): SQoSItem {
+        let suiBCS = bcs::new(*raw_bcs);
+
+        let t = bcs::peel_u8(&mut suiBCS);
+        let v = bcs::peel_vec_u8(&mut suiBCS);
+
         SQoSItem {
             t,
             v,
@@ -969,5 +1084,18 @@ module dante_types::SQoS {
         };
 
         test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_de_bcs_for_SQoS_item() {
+        let oriItem = create_item(sqos_threshold(), message_item::number_to_be_rawbytes(&(73 as u32)));
+
+        let itemBytes = bcs::to_bytes(&oriItem);
+
+        let deItem = de_item_from_bcs(&itemBytes);
+
+        let deTsd = message_item::u32_from_be_bytes(&deItem.v);
+
+        assert!(deTsd == 73, 0);
     }
 }
