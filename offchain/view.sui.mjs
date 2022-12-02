@@ -3,6 +3,8 @@ import {BCS, fromB64, toB64, getSuiMoveConfig } from '@mysten/bcs'
 
 import fs from 'fs';
 
+import * as SuiTypes from './sui_types.js'
+
 const provider = new JsonRpcProvider(Network.DEVNET);
 const bcs = new BCS(getSuiMoveConfig());
 
@@ -226,27 +228,46 @@ async function bcs_test() {
 
 async function test_bcs_bcs() {
     const bcs4value = new BCS({
-        vectorType: 'vector<vector<u8>>',
+        vectorType: 'vector',
         addressLength: 20,
         addressEncoding: 'hex'
     });
 
-    // const valName = 'SuiBCS';
+    const serData = bcs.ser(BCS.U128, BigInt('1234567890123456789011223344'));
+    console.log(serData.toBytes());
 
-    // bcs4value.registerStructType(valName, {
-    //     bytes: BCS.STRING,
-    // });
+    const deData = bcs.de(BCS.U128, serData.toBytes(), 'base64');
+    console.log(deData);
 
-    let ar = new Uint8Array(Buffer.from('eWFEIGVjaU4Ib2xsZUgFAg=='));
-    console.log(ar.reverse());
+    const serData2 = bcs4value.ser('vector<u128>', ['1234567890123456789011223344', '987654321']);
+    console.log(serData2.toBytes());
 
-    // const deBCS = bcs4value.de('vector<vector<u8>>', ar.reverse(), 'base64');
-    // console.log(deBCS);
+    const deData2 = bcs4value.de('vector<u128>', serData2.toBytes(), 'base64');
+    console.log(deData2);
+
+    const serData3 = bcs4value.ser(BCS.U8, 255);
+    console.log(serData3.toBytes());
+
+    const serData4 = bcs.ser('vector<string>', ['Hello', 'Nika']);
+    const deData4 = bcs4value.de('vector<string>', serData4.toBytes(), 'base64');
+    console.log(deData4);
+}
+
+async function test_types_msgItem() {
+    const item = new SuiTypes.SuiMessageItem('Nika', SuiTypes.SuiMsgType.suiVecU128, ['1234567890', '987654321']);
+    // console.log(item);
+    const serBytes = item.to_bcs_bytes();
+    console.log(serBytes);
+    const deItem = item.de_bcs_bytes(serBytes)
+    console.log(deItem);
+
+    console.log(SuiTypes.bcs_value_vec_u128(new Uint8Array(Buffer.from(deItem.value, 'base64'))));
 }
 
 // await bcs_test();
 // await objects_test();
-await sent_message_event();
+// await sent_message_event();
 // await sui_move_call();
 
 // await test_bcs_bcs();
+await test_types_msgItem();

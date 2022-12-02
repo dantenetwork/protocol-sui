@@ -110,7 +110,7 @@ module dante_types::sender {
     use dante_types::session::{Self, Session};
     use dante_types::env_recorder::{Self, SendOutEnv, ProtocolContext};
     
-    use std::bcs;
+    // use std::bcs;
     use std::vector;
     use std::option::{Self, Option};
 
@@ -346,7 +346,7 @@ module dante_types::sender {
     public fun test_address() {
         let address_bytes = vector<u8>[01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
         let a: address = object::address_from_bytes(address_bytes);
-        assert!(bcs::to_bytes(&a) ==  address_bytes, 0);
+        assert!(sui::bcs::to_bytes(&a) ==  address_bytes, 0);
     }
 
     #[test]
