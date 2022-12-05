@@ -940,6 +940,7 @@ module dante_types::session {
 
         let sessBytes = bcs::to_bytes(&oriSess);
         std::debug::print(&sessBytes);
+        std::debug::print(&vector::length(&sessBytes));
     }
 }
 
