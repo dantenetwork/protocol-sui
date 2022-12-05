@@ -1,6 +1,6 @@
 "use strict";
 exports.__esModule = true;
-exports.SuiMessageItem = exports.bcs_value = exports.bcs_value_vec_u128 = exports.SuiMsgType = void 0;
+exports.SuiSession = exports.SessionType = exports.SQoSItem = exports.SQoSType = exports.SuiMessageItem = exports.bcs_value = exports.bcs_value_vec_u128 = exports.SuiMsgType = void 0;
 var bcs_1 = require("@mysten/bcs");
 var SuiMsgType;
 (function (SuiMsgType) {
@@ -119,7 +119,7 @@ var SuiMessageItem = /** @class */ (function () {
             value: bcs_1.BCS.STRING
         });
     }
-    SuiMessageItem.prototype.to_bcs_bytes = function () {
+    SuiMessageItem.prototype.en_bcs_bytes = function () {
         if (this.value != undefined) {
             return this.bcs.ser(this.RMI_TypeName, {
                 name: this.name,
@@ -134,3 +134,91 @@ var SuiMessageItem = /** @class */ (function () {
     return SuiMessageItem;
 }());
 exports.SuiMessageItem = SuiMessageItem;
+var SQoSType;
+(function (SQoSType) {
+    SQoSType[SQoSType["Reveal"] = 0] = "Reveal";
+    SQoSType[SQoSType["Challenge"] = 1] = "Challenge";
+    SQoSType[SQoSType["Threshold"] = 2] = "Threshold";
+    SQoSType[SQoSType["Priority"] = 3] = "Priority";
+    SQoSType[SQoSType["ExceptionRollback"] = 4] = "ExceptionRollback";
+    SQoSType[SQoSType["SelectionDelay"] = 5] = "SelectionDelay";
+    SQoSType[SQoSType["Anonymous"] = 6] = "Anonymous";
+    SQoSType[SQoSType["Identity"] = 7] = "Identity";
+    SQoSType[SQoSType["Isolation"] = 8] = "Isolation";
+    SQoSType[SQoSType["CrossVerify"] = 9] = "CrossVerify";
+})(SQoSType = exports.SQoSType || (exports.SQoSType = {}));
+var SQoSItem = /** @class */ (function () {
+    function SQoSItem(t, v) {
+        this.t = t;
+        this.v = v;
+        this.RSI_TypeName = 'RawSQoSItem';
+        this.bcs = new bcs_1.BCS((0, bcs_1.getSuiMoveConfig)());
+        this.bcs.registerStructType(this.RSI_TypeName, {
+            type: bcs_1.BCS.U8,
+            value: bcs_1.BCS.STRING
+        });
+    }
+    SQoSItem.prototype.en_bcs_bytes = function () {
+        return this.bcs.ser(this.RSI_TypeName, {
+            type: this.t,
+            value: Buffer.from(this.v).toString('base64')
+        }).toBytes();
+    };
+    SQoSItem.prototype.de_bcs_bytes = function (bcs_bytes) {
+        return this.bcs.de(this.RSI_TypeName, bcs_bytes, 'base64');
+    };
+    return SQoSItem;
+}());
+exports.SQoSItem = SQoSItem;
+var SessionType;
+(function (SessionType) {
+    SessionType[SessionType["MessageSend"] = 1] = "MessageSend";
+    SessionType[SessionType["CallOut"] = 2] = "CallOut";
+    SessionType[SessionType["Callback"] = 3] = "Callback";
+    SessionType[SessionType["LocolErr"] = 104] = "LocolErr";
+    SessionType[SessionType["RemoteErr"] = 105] = "RemoteErr";
+})(SessionType = exports.SessionType || (exports.SessionType = {}));
+var SuiSession = /** @class */ (function () {
+    function SuiSession(id, type, callback, commitment, answer) {
+        if (callback === void 0) { callback = null; }
+        if (commitment === void 0) { commitment = null; }
+        if (answer === void 0) { answer = null; }
+        this.id = id;
+        this.type = type;
+        this.callback = (callback == null) ? { 'none': null } : { 'some': Buffer.from(callback).toString('base64') };
+        this.commitment = (commitment == null) ? { 'none': null } : { 'some': Buffer.from(commitment).toString('base64') };
+        ;
+        this.answer = (answer == null) ? { 'none': null } : { 'some': Buffer.from(answer).toString('base64') };
+        ;
+        this.RSess_TypeName = 'RawSession';
+        this.bcs = new bcs_1.BCS((0, bcs_1.getSuiMoveConfig)());
+        this.bcs.registerEnumType('Option<vector<u8>>', {
+            some: bcs_1.BCS.STRING,
+            none: null
+        });
+        this.bcs.registerStructType(this.RSess_TypeName, {
+            id: bcs_1.BCS.U128,
+            type: bcs_1.BCS.U8,
+            callback: 'Option<vector<u8>>',
+            commitment: 'Option<vector<u8>>',
+            answer: 'Option<vector<u8>>'
+        });
+    }
+    SuiSession.prototype.en_bcs_bytes = function () {
+        // const cb = (this.callback == null)? null : Buffer.from(this.callback).toString('base64');
+        // const cm = (this.commitment == null)? null : Buffer.from(this.commitment).toString('base64');
+        // const an = (this.answer == null)? null : Buffer.from(this.answer).toString('base64');
+        return this.bcs.ser(this.RSess_TypeName, {
+            id: this.id,
+            type: this.type,
+            callback: this.callback,
+            commitment: this.commitment,
+            answer: this.answer
+        }).toBytes();
+    };
+    SuiSession.prototype.de_bcs_bytes = function (bcs_bytes) {
+        return this.bcs.de(this.RSess_TypeName, bcs_bytes, 'base64');
+    };
+    return SuiSession;
+}());
+exports.SuiSession = SuiSession;

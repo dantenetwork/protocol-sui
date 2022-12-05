@@ -133,7 +133,7 @@ export class SuiMessageItem {
         });
     }
 
-    to_bcs_bytes() {
+    en_bcs_bytes() {
         if (this.value != undefined) {
             return this.bcs.ser(this.RMI_TypeName, {
                 name: this.name,
@@ -145,5 +145,110 @@ export class SuiMessageItem {
 
     de_bcs_bytes(bcs_bytes: Uint8Array) {
         return this.bcs.de(this.RMI_TypeName, bcs_bytes, 'base64');
+    }
+}
+
+export enum SQoSType {
+    Reveal = 0,
+    Challenge,
+    Threshold,
+    Priority,
+    ExceptionRollback,
+    SelectionDelay,
+    Anonymous,
+    Identity,
+    Isolation,
+    CrossVerify
+}
+
+export class SQoSItem {
+    t: SQoSType;
+    v: Uint8Array;
+    bcs: BCS;
+    RSI_TypeName: string;
+    
+    constructor(t: SQoSType, v: Uint8Array) {
+        this.t = t;
+        this.v = v;
+
+        this.RSI_TypeName = 'RawSQoSItem';
+        this.bcs = new BCS(getSuiMoveConfig());
+        this.bcs.registerStructType(this.RSI_TypeName, {
+            type: BCS.U8,
+            value: BCS.STRING
+        });
+    }
+
+    en_bcs_bytes() {
+        return this.bcs.ser(this.RSI_TypeName, {
+            type: this.t,
+            value: Buffer.from(this.v).toString('base64'),
+        }).toBytes();
+    }
+
+    de_bcs_bytes(bcs_bytes: Uint8Array) {
+        return this.bcs.de(this.RSI_TypeName, bcs_bytes, 'base64');
+    }
+}
+
+export enum SessionType {
+    MessageSend = 1,
+    CallOut = 2,
+    Callback = 3,
+    LocolErr = 104,
+    RemoteErr = 105
+}
+
+export class SuiSession {
+    id: string;
+    type: SessionType;
+    callback: {"none": null} | { some: string; };
+    commitment: {"none": null} | { some: string; };
+    answer: {"none": null} | { some: string; };
+
+    bcs: BCS;
+    RSess_TypeName: string;
+
+    constructor(id: string, type: SessionType, 
+                callback: Uint8Array|null = null, 
+                commitment: Uint8Array|null = null,
+                answer: Uint8Array|null = null) {
+        this.id = id;
+        this.type = type;
+        this.callback = (callback == null)? {'none': null}: {'some': Buffer.from(callback).toString('base64')};
+        this.commitment = (commitment == null)? {'none': null}: {'some': Buffer.from(commitment).toString('base64')};;
+        this.answer = (answer == null)? {'none': null}: {'some': Buffer.from(answer).toString('base64')};;
+
+        this.RSess_TypeName = 'RawSession';
+        this.bcs = new BCS(getSuiMoveConfig());
+        this.bcs.registerEnumType('Option<vector<u8>>', {
+            some: BCS.STRING,
+            none: null
+        });
+        this.bcs.registerStructType(this.RSess_TypeName, {
+            id: BCS.U128,
+            type: BCS.U8,
+            callback: 'Option<vector<u8>>',
+            commitment: 'Option<vector<u8>>',
+            answer: 'Option<vector<u8>>'
+        });
+    }
+
+    en_bcs_bytes() {
+        // const cb = (this.callback == null)? null : Buffer.from(this.callback).toString('base64');
+        // const cm = (this.commitment == null)? null : Buffer.from(this.commitment).toString('base64');
+        // const an = (this.answer == null)? null : Buffer.from(this.answer).toString('base64');
+
+        return this.bcs.ser(this.RSess_TypeName, {
+            id: this.id,
+            type: this.type,
+            callback: this.callback,
+            commitment: this.commitment,
+            answer: this.answer
+        }).toBytes();
+    }
+
+    de_bcs_bytes(bcs_bytes: Uint8Array) {
+        return this.bcs.de(this.RSess_TypeName, bcs_bytes, 'base64');
     }
 }

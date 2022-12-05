@@ -927,6 +927,20 @@ module dante_types::session {
         assert!(option::is_none(&deSess.commitment), 0);
         assert!(option::is_none(&deSess.answer), 0);
     }
+
+    #[test]
+    public fun test_bcs_bytes_session() {
+        let oriSess = Session {
+            id: 12800000,
+            type: 1,
+            callback: option::none(),
+            commitment: option::some(vector<u8>[73, 37]),
+            answer: option::some(vector<u8>[73, 37]),
+        };
+
+        let sessBytes = bcs::to_bytes(&oriSess);
+        std::debug::print(&sessBytes);
+    }
 }
 
 module dante_types::SQoS {

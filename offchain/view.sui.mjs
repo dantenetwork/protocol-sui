@@ -256,12 +256,33 @@ async function test_bcs_bcs() {
 async function test_types_msgItem() {
     const item = new SuiTypes.SuiMessageItem('Nika', SuiTypes.SuiMsgType.suiVecU128, ['1234567890', '987654321']);
     // console.log(item);
-    const serBytes = item.to_bcs_bytes();
+    const serBytes = item.en_bcs_bytes();
     console.log(serBytes);
     const deItem = item.de_bcs_bytes(serBytes)
     console.log(deItem);
 
     console.log(SuiTypes.bcs_value_vec_u128(new Uint8Array(Buffer.from(deItem.value, 'base64'))));
+}
+
+async function test_types_SQoSItem() {
+    const item = new SuiTypes.SQoSItem(SuiTypes.SQoSType.Challenge, [73, 37]);
+    const serBytes = item.en_bcs_bytes();
+    console.log(serBytes);
+
+    const deItem = item.de_bcs_bytes(serBytes);
+    console.log(deItem);
+    console.log(new Uint8Array(Buffer.from(deItem.value, 'base64')));
+}
+
+async function test_types_Session() {
+    const sess = new SuiTypes.SuiSession('12800000', SuiTypes.SessionType.MessageSend, null, [73, 37], [73, 37]);
+    const serBytes = sess.en_bcs_bytes();
+    console.log(serBytes);
+
+    const deItem = sess.de_bcs_bytes(serBytes);
+    console.log(deItem);
+    console.log(new Uint8Array(Buffer.from(deItem.commitment.some, 'base64')));
+    console.log(new Uint8Array(Buffer.from(deItem.answer.some, 'base64')));
 }
 
 // await bcs_test();
@@ -270,4 +291,6 @@ async function test_types_msgItem() {
 // await sui_move_call();
 
 // await test_bcs_bcs();
-await test_types_msgItem();
+// await test_types_msgItem();
+// await test_types_SQoSItem();
+await test_types_Session();
