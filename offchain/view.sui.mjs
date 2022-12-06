@@ -281,8 +281,8 @@ async function test_types_Session() {
 
     const deItem = sess.de_bcs_bytes(serBytes);
     console.log(deItem);
-    console.log(new Uint8Array(Buffer.from(deItem.commitment.some, 'base64')));
-    console.log(new Uint8Array(Buffer.from(deItem.answer.some, 'base64')));
+    // console.log(new Uint8Array(Buffer.from(deItem.commitment.some, 'base64')));
+    // console.log(new Uint8Array(Buffer.from(deItem.answer.some, 'base64')));
 }
 
 // await bcs_test();

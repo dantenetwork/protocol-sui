@@ -941,6 +941,13 @@ module dante_types::session {
         let sessBytes = bcs::to_bytes(&oriSess);
         std::debug::print(&sessBytes);
         std::debug::print(&vector::length(&sessBytes));
+
+        assert!(vector<u8>[
+                            0, 80, 195, 0,  0,  0, 0, 0,
+                            0,  0,   0, 0,  0,  0, 0, 0,
+                            1,  0,   1, 2, 73, 37, 1, 2,
+                            73, 37
+                            ] == sessBytes, 0);
     }
 }
 

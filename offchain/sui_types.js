@@ -179,35 +179,49 @@ var SessionType;
     SessionType[SessionType["RemoteErr"] = 105] = "RemoteErr";
 })(SessionType = exports.SessionType || (exports.SessionType = {}));
 var SuiSession = /** @class */ (function () {
+    // constructor(id: string, type: SessionType, 
+    //             callback: Uint8Array|null = null, 
+    //             commitment: Uint8Array|null = null,
+    //             answer: Uint8Array|null = null) {
+    //     this.id = id;
+    //     this.type = type;
+    //     this.callback = (callback == null)? {'none': null}: {'some': Buffer.from(callback).toString('base64')};
+    //     this.commitment = (commitment == null)? {'none': null}: {'some': Buffer.from(commitment).toString('base64')};;
+    //     this.answer = (answer == null)? {'none': null}: {'some': Buffer.from(answer).toString('base64')};;
+    //     this.RSess_TypeName = 'RawSession';
+    //     this.bcs = new BCS(getSuiMoveConfig());
+    //     this.bcs.registerEnumType('Option<vector<u8>>', {
+    //         some: BCS.STRING,
+    //         none: null
+    //     });
+    //     this.bcs.registerStructType(this.RSess_TypeName, {
+    //         id: BCS.U128,
+    //         type: BCS.U8,
+    //         callback: 'Option<vector<u8>>',
+    //         commitment: 'Option<vector<u8>>',
+    //         answer: 'Option<vector<u8>>'
+    //     });
+    // }
     function SuiSession(id, type, callback, commitment, answer) {
         if (callback === void 0) { callback = null; }
         if (commitment === void 0) { commitment = null; }
         if (answer === void 0) { answer = null; }
         this.id = id;
         this.type = type;
-        this.callback = (callback == null) ? { 'none': null } : { 'some': Buffer.from(callback).toString('base64') };
-        this.commitment = (commitment == null) ? { 'none': null } : { 'some': Buffer.from(commitment).toString('base64') };
-        ;
-        this.answer = (answer == null) ? { 'none': null } : { 'some': Buffer.from(answer).toString('base64') };
-        ;
+        this.callback = (callback == null) ? [] : [callback];
+        this.commitment = (commitment == null) ? [] : [commitment];
+        this.answer = (answer == null) ? [] : [answer];
         this.RSess_TypeName = 'RawSession';
         this.bcs = new bcs_1.BCS((0, bcs_1.getSuiMoveConfig)());
-        this.bcs.registerEnumType('Option<vector<u8>>', {
-            some: bcs_1.BCS.STRING,
-            none: null
-        });
-        this.bcs.registerStructType(this.RSess_TypeName, {
+        this.bcs.registerStructType('RawSession', {
             id: bcs_1.BCS.U128,
             type: bcs_1.BCS.U8,
-            callback: 'Option<vector<u8>>',
-            commitment: 'Option<vector<u8>>',
-            answer: 'Option<vector<u8>>'
+            callback: 'vector<vector<u8>>',
+            commitment: 'vector<vector<u8>>',
+            answer: 'vector<vector<u8>>'
         });
     }
     SuiSession.prototype.en_bcs_bytes = function () {
-        // const cb = (this.callback == null)? null : Buffer.from(this.callback).toString('base64');
-        // const cm = (this.commitment == null)? null : Buffer.from(this.commitment).toString('base64');
-        // const an = (this.answer == null)? null : Buffer.from(this.answer).toString('base64');
         return this.bcs.ser(this.RSess_TypeName, {
             id: this.id,
             type: this.type,
