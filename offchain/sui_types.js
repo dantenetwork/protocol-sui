@@ -1,6 +1,6 @@
 "use strict";
 exports.__esModule = true;
-exports.SuiSession = exports.SessionType = exports.SQoSItem = exports.SQoSType = exports.SuiMessageItem = exports.bcs_value = exports.bcs_value_vec_u128 = exports.SuiMsgType = void 0;
+exports.SuiRecvMessage = exports.SuiSession = exports.SessionType = exports.SuiSQoSItem = exports.SuiSQoSType = exports.SuiMessageItem = exports.bcs_value = exports.bcs_value_vec_u128 = exports.SuiMsgType = void 0;
 var bcs_1 = require("@mysten/bcs");
 var SuiMsgType;
 (function (SuiMsgType) {
@@ -134,21 +134,21 @@ var SuiMessageItem = /** @class */ (function () {
     return SuiMessageItem;
 }());
 exports.SuiMessageItem = SuiMessageItem;
-var SQoSType;
-(function (SQoSType) {
-    SQoSType[SQoSType["Reveal"] = 0] = "Reveal";
-    SQoSType[SQoSType["Challenge"] = 1] = "Challenge";
-    SQoSType[SQoSType["Threshold"] = 2] = "Threshold";
-    SQoSType[SQoSType["Priority"] = 3] = "Priority";
-    SQoSType[SQoSType["ExceptionRollback"] = 4] = "ExceptionRollback";
-    SQoSType[SQoSType["SelectionDelay"] = 5] = "SelectionDelay";
-    SQoSType[SQoSType["Anonymous"] = 6] = "Anonymous";
-    SQoSType[SQoSType["Identity"] = 7] = "Identity";
-    SQoSType[SQoSType["Isolation"] = 8] = "Isolation";
-    SQoSType[SQoSType["CrossVerify"] = 9] = "CrossVerify";
-})(SQoSType = exports.SQoSType || (exports.SQoSType = {}));
-var SQoSItem = /** @class */ (function () {
-    function SQoSItem(t, v) {
+var SuiSQoSType;
+(function (SuiSQoSType) {
+    SuiSQoSType[SuiSQoSType["Reveal"] = 0] = "Reveal";
+    SuiSQoSType[SuiSQoSType["Challenge"] = 1] = "Challenge";
+    SuiSQoSType[SuiSQoSType["Threshold"] = 2] = "Threshold";
+    SuiSQoSType[SuiSQoSType["Priority"] = 3] = "Priority";
+    SuiSQoSType[SuiSQoSType["ExceptionRollback"] = 4] = "ExceptionRollback";
+    SuiSQoSType[SuiSQoSType["SelectionDelay"] = 5] = "SelectionDelay";
+    SuiSQoSType[SuiSQoSType["Anonymous"] = 6] = "Anonymous";
+    SuiSQoSType[SuiSQoSType["Identity"] = 7] = "Identity";
+    SuiSQoSType[SuiSQoSType["Isolation"] = 8] = "Isolation";
+    SuiSQoSType[SuiSQoSType["CrossVerify"] = 9] = "CrossVerify";
+})(SuiSQoSType = exports.SuiSQoSType || (exports.SuiSQoSType = {}));
+var SuiSQoSItem = /** @class */ (function () {
+    function SuiSQoSItem(t, v) {
         this.t = t;
         this.v = v;
         this.RSI_TypeName = 'RawSQoSItem';
@@ -158,18 +158,18 @@ var SQoSItem = /** @class */ (function () {
             value: bcs_1.BCS.STRING
         });
     }
-    SQoSItem.prototype.en_bcs_bytes = function () {
+    SuiSQoSItem.prototype.en_bcs_bytes = function () {
         return this.bcs.ser(this.RSI_TypeName, {
             type: this.t,
             value: Buffer.from(this.v).toString('base64')
         }).toBytes();
     };
-    SQoSItem.prototype.de_bcs_bytes = function (bcs_bytes) {
+    SuiSQoSItem.prototype.de_bcs_bytes = function (bcs_bytes) {
         return this.bcs.de(this.RSI_TypeName, bcs_bytes, 'base64');
     };
-    return SQoSItem;
+    return SuiSQoSItem;
 }());
-exports.SQoSItem = SQoSItem;
+exports.SuiSQoSItem = SuiSQoSItem;
 var SessionType;
 (function (SessionType) {
     SessionType[SessionType["MessageSend"] = 1] = "MessageSend";
@@ -236,3 +236,57 @@ var SuiSession = /** @class */ (function () {
     return SuiSession;
 }());
 exports.SuiSession = SuiSession;
+var SuiRecvMessage = /** @class */ (function () {
+    function SuiRecvMessage(msgID, fromChain, toChain, 
+    // bcs_sqos: Array<SuiSQoSItem>,
+    accountName, actionName, 
+    // bcs_data: Array<SuiMessageItem>,
+    sender, signer, bcs_session) {
+        this.msgID = msgID;
+        this.fromChain = fromChain;
+        this.toChain = toChain;
+        this.bcs_sqos = new Array();
+        this.accountName = accountName;
+        this.actionName = actionName;
+        this.bcs_payload = new Array();
+        this.sender = sender;
+        this.signer = signer;
+        this.bcs_session = bcs_session;
+    }
+    SuiRecvMessage.prototype.add_message_item = function (msgItem) {
+        this.bcs_payload.push(msgItem);
+    };
+    SuiRecvMessage.prototype.add_sqos_item = function (sqosItem) {
+        this.bcs_sqos.push(sqosItem);
+    };
+    SuiRecvMessage.prototype.into_parameters = function () {
+        var output = [this.msgID];
+        output.push(new Uint8Array(Buffer.from(this.fromChain, 'utf-8')));
+        output.push(new Uint8Array(Buffer.from(this.toChain, 'utf-8')));
+        // bcs sqos to bcs vector
+        var sqos = [];
+        for (var idx in this.bcs_sqos) {
+            sqos.push(this.bcs_sqos[idx].en_bcs_bytes());
+        }
+        output.push(sqos);
+        // bcs sqos end
+        output.push(this.accountName);
+        output.push(this.actionName);
+        // bcs data to bcs vector
+        var payload = [];
+        for (var idx in this.bcs_payload) {
+            payload.push(this.bcs_payload[idx].en_bcs_bytes());
+        }
+        output.push(payload);
+        // bcs data end
+        // output = output.concat([this.sender, this.signer]);
+        output.push(this.sender);
+        output.push(this.signer);
+        // bcs session to bcs vector
+        output.push(this.bcs_session.en_bcs_bytes());
+        // bcs session end
+        return output;
+    };
+    return SuiRecvMessage;
+}());
+exports.SuiRecvMessage = SuiRecvMessage;

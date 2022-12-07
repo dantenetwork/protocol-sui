@@ -6,10 +6,11 @@ module dante_types::receiver {
     use dante_types::session::{Self, Session};
     use dante_types::env_recorder;
 
-    use sui::object::{UID};
+    use sui::object::{Self, UID};
     use sui::tx_context::{Self, TxContext};
     use sui::table;
     use sui::ecdsa;
+    use sui::transfer;
 
     use std::vector;
     use std::option::{Self, Option};
@@ -58,6 +59,29 @@ module dante_types::receiver {
         message_cache: table::Table<vector<u8>, RecvCache>,     // map<from chain | msgID, RecvCache>
 
         default_copy_count: u32,
+    }
+
+    fun init(ctx: &mut TxContext) {
+        let recver = ProtocolRecver {
+            id: object::new(ctx),
+            max_recved_id: table::new(ctx),
+            message_cache: table::new(ctx),
+            default_copy_count: 1,
+        };
+
+        transfer::share_object(recver);
+    }
+
+    #[test_only]
+    fun test_init(ctx: &mut TxContext) {
+        let recver = ProtocolRecver {
+            id: object::new(ctx),
+            max_recved_id: table::new(ctx),
+            message_cache: table::new(ctx),
+            default_copy_count: 1,
+        };
+
+        transfer::share_object(recver);
     }
 
     /////////////////////////////////////////////////////////////////////////

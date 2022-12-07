@@ -4,6 +4,8 @@ env_shared_id: 0x3348b94cb733e60f6e73947854e69a2287d80f46
 
 sender_shared_id: 0x115f9da0743e35d1fdc3ac53910dcda4e4712f1d
 
+recver_shared_id: 
+
 package: 0xd9946316f4d7a2828178ac38d5209298b381d893
 
 sui client call --function test_send_message_out --module sender --package 0xd9946316f4d7a2828178ac38d5209298b381d893 --args \"0x3348b94cb733e60f6e73947854e69a2287d80f46\" \"0x115f9da0743e35d1fdc3ac53910dcda4e4712f1d\" --gas-budget 30000

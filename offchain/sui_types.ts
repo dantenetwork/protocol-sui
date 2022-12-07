@@ -1,4 +1,5 @@
-import {BCS, fromB64, toB64, getSuiMoveConfig } from '@mysten/bcs'
+import { BCS, fromB64, toB64, getSuiMoveConfig } from '@mysten/bcs'
+import * as utf8 from 'utf8';
 
 export enum SuiMsgType {
     suiString = 0,
@@ -45,12 +46,12 @@ function u64_bcs_value(value: string) {
 
 function u128_bcs_value(value: string) {
     // const bcs4value = new BCS(getSuiMoveConfig());
-    return bcs4value.ser(BCS.U128, value); 
+    return bcs4value.ser(BCS.U128, value);
 }
 
 function vec_string_bcs_value(value: Array<string>) {
     // const bcs4value = new BCS(getSuiMoveConfig());
-    return bcs4value.ser('vector<string>', value); 
+    return bcs4value.ser('vector<string>', value);
 }
 
 function vec_u64_bcs_value(value: BigUint64Array) {
@@ -122,7 +123,7 @@ export class SuiMessageItem {
         this.name = name;
         this.type = type;
         this.value = bcs_value(type, value)?.toBytes();
-        
+
         this.bcs = new BCS(getSuiMoveConfig());
 
         this.RMI_TypeName = 'RawMessageItem';
@@ -148,7 +149,7 @@ export class SuiMessageItem {
     }
 }
 
-export enum SQoSType {
+export enum SuiSQoSType {
     Reveal = 0,
     Challenge,
     Threshold,
@@ -161,13 +162,13 @@ export enum SQoSType {
     CrossVerify
 }
 
-export class SQoSItem {
-    t: SQoSType;
+export class SuiSQoSItem {
+    t: SuiSQoSType;
     v: Uint8Array;
     bcs: BCS;
     RSI_TypeName: string;
-    
-    constructor(t: SQoSType, v: Uint8Array) {
+
+    constructor(t: SuiSQoSType, v: Uint8Array) {
         this.t = t;
         this.v = v;
 
@@ -235,10 +236,10 @@ export class SuiSession {
     //     });
     // }
 
-    constructor(id: string, type: SessionType, 
-                    callback: Uint8Array|null = null, 
-                    commitment: Uint8Array|null = null,
-                    answer: Uint8Array|null = null) {
+    constructor(id: string, type: SessionType,
+        callback: Uint8Array | null = null,
+        commitment: Uint8Array | null = null,
+        answer: Uint8Array | null = null) {
         this.id = id;
         this.type = type;
         this.callback = (callback == null) ? [] : [callback];
@@ -268,5 +269,84 @@ export class SuiSession {
 
     de_bcs_bytes(bcs_bytes: Uint8Array) {
         return this.bcs.de(this.RSess_TypeName, bcs_bytes, 'base64');
+    }
+}
+
+export class SuiRecvMessage {
+    msgID: string;
+    fromChain: string;
+    toChain: string;
+    bcs_sqos: Array<SuiSQoSItem>;
+    accountName: string;
+    actionName: Uint8Array;
+    bcs_payload: Array<SuiMessageItem>;
+    sender: Uint8Array;
+    signer: Uint8Array;
+    bcs_session: SuiSession;            
+
+    constructor(msgID: string,
+                fromChain: string,
+                toChain: string,
+                // bcs_sqos: Array<SuiSQoSItem>,
+                accountName: string,
+                actionName: Uint8Array,
+                // bcs_data: Array<SuiMessageItem>,
+                sender: Uint8Array,
+                signer: Uint8Array,
+                bcs_session: SuiSession) {
+        
+        this.msgID = msgID;
+        this.fromChain = fromChain;
+        this.toChain = toChain;
+        this.bcs_sqos = new Array<SuiSQoSItem>();
+        this.accountName = accountName;
+        this.actionName = actionName;
+        this.bcs_payload = new Array<SuiMessageItem>();
+        this.sender = sender;
+        this.signer = signer;
+        this.bcs_session = bcs_session;
+    }
+
+    add_message_item(msgItem: SuiMessageItem) {
+        this.bcs_payload.push(msgItem);
+    }
+
+    add_sqos_item(sqosItem: SuiSQoSItem) {
+        this.bcs_sqos.push(sqosItem);
+    }
+
+    into_parameters() {
+        let output: Array<any> = [this.msgID];
+        output.push(new Uint8Array(Buffer.from(this.fromChain, 'utf-8')));
+        output.push(new Uint8Array(Buffer.from(this.toChain, 'utf-8')));
+        
+        // bcs sqos to bcs vector
+        let sqos: Array<Uint8Array> = [];
+        for (var idx in this.bcs_sqos) {
+            sqos.push(this.bcs_sqos[idx].en_bcs_bytes());
+        }
+        output.push(sqos);
+        // bcs sqos end
+
+        output.push(this.accountName);
+        output.push(this.actionName);
+
+        // bcs data to bcs vector
+        let payload: Array<Uint8Array> = [];
+        for (var idx in this.bcs_payload) {
+            payload.push(this.bcs_payload[idx].en_bcs_bytes()!);
+        }
+        output.push(payload);
+        // bcs data end
+
+        // output = output.concat([this.sender, this.signer]);
+        output.push(this.sender);
+        output.push(this.signer);
+
+        // bcs session to bcs vector
+        output.push(this.bcs_session.en_bcs_bytes());
+        // bcs session end
+        
+        return output;
     }
 }

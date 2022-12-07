@@ -11,6 +11,9 @@ const bcs = new BCS(getSuiMoveConfig());
 const package_id = '0xd9946316f4d7a2828178ac38d5209298b381d893';
 const env_object_id = '0x3348b94cb733e60f6e73947854e69a2287d80f46';
 const sender_object_id = '0x115f9da0743e35d1fdc3ac53910dcda4e4712f1d';
+const recver_object_id = '';
+
+const default_operator = '0x59ca90e94cb1427c30aca6c44c7ac1bc2e44dc38';
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
@@ -265,7 +268,7 @@ async function test_types_msgItem() {
 }
 
 async function test_types_SQoSItem() {
-    const item = new SuiTypes.SQoSItem(SuiTypes.SQoSType.Challenge, [73, 37]);
+    const item = new SuiTypes.SuiSQoSItem(SuiTypes.SuiSQoSType.Challenge, [73, 37]);
     const serBytes = item.en_bcs_bytes();
     console.log(serBytes);
 
@@ -285,6 +288,22 @@ async function test_types_Session() {
     // console.log(new Uint8Array(Buffer.from(deItem.answer.some, 'base64')));
 }
 
+async function test_submit_message() {
+    const sess = new SuiTypes.SuiSession('12800000', SuiTypes.SessionType.MessageSend, null, [73, 37], [73, 37]);
+
+    let recvMsg = new SuiTypes.SuiRecvMessage(
+        1, 'Polkadot', 'Sui', default_operator, [0x01, 0x02, 0x03, 0x04], [0xff], [0xff], sess 
+    );
+
+    const item = new SuiTypes.SuiSQoSItem(SuiTypes.SuiSQoSType.Challenge, [73, 37]);
+    recvMsg.add_sqos_item(item);
+
+    const msgitem = new SuiTypes.SuiMessageItem('Nika', SuiTypes.SuiMsgType.suiVecU128, ['1234567890', '987654321']);
+    recvMsg.add_message_item(msgitem);
+
+    console.log(recvMsg.into_parameters());
+}
+
 // await bcs_test();
 // await objects_test();
 // await sent_message_event();
@@ -293,4 +312,6 @@ async function test_types_Session() {
 // await test_bcs_bcs();
 // await test_types_msgItem();
 // await test_types_SQoSItem();
-await test_types_Session();
+// await test_types_Session();
+
+await test_submit_message();
