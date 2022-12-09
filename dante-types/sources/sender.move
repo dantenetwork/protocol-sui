@@ -7,9 +7,10 @@ module dante_types::env_recorder {
     use sui::transfer;
     use sui::dynamic_field;
 
-    use std::bcs;
+    // use std::bcs;
 
     friend dante_types::sender;
+    friend dante_types::receiver;
 
     // definations
     const CHAIN_NAME: vector<u8> = b"SUI_TESTNET";
@@ -26,7 +27,7 @@ module dante_types::env_recorder {
 
     // context
     struct ProtocolContext has copy, drop, store {
-        id: u128,
+        msgID: u128,
         fromChain: vector<u8>,
         sender: vector<u8>,
         signer: vector<u8>,
@@ -79,23 +80,23 @@ module dante_types::env_recorder {
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
     /// Context
-    public(friend) fun create_context(id: u128,
+    public(friend) fun create_context(msgID: u128,
                                     fromChain: vector<u8>,
-                                    sender: address,
-                                    signer: address,
+                                    sender: vector<u8>,
+                                    signer: vector<u8>,
                                     sqos: SQoS,
                                     session: Session,): ProtocolContext {
         ProtocolContext {
-            id,
+            msgID,
             fromChain: fromChain,
-            sender: bcs::to_bytes(&sender),
-            signer: bcs::to_bytes(&signer),
+            sender,
+            signer,
             sqos: sqos,
             session: session,
         }
     }
 
-    public fun protocol_context_id(protocol_context: &ProtocolContext): u128 {protocol_context.id}
+    public fun protocol_context_id(protocol_context: &ProtocolContext): u128 {protocol_context.msgID}
     public fun protocol_context_sqos(protocol_context: &ProtocolContext): SQoS {protocol_context.sqos}
     public fun protocol_context_session(protocol_context: &ProtocolContext): Session {protocol_context.session}
     public fun protocol_context_from_chain(protocol_context: &ProtocolContext): vector<u8> {protocol_context.fromChain}
@@ -224,7 +225,9 @@ module dante_types::sender {
             msgID,
         });
 
-        env_recorder::create_context(msgID, env_recorder::chain_name(), sender, sender, sqos, session)
+        env_recorder::create_context(msgID, env_recorder::chain_name(), 
+                                    message_item::address_to_rawbytes(&sender), 
+                                    message_item::address_to_rawbytes(&sender), sqos, session)
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////

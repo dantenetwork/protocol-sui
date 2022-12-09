@@ -6,18 +6,20 @@ module dante_types::receiver {
     use dante_types::session::{Self, Session};
     use dante_types::env_recorder;
 
-    use sui::object::{Self, UID};
+    use sui::object::{Self, UID, ID};
     use sui::tx_context::{Self, TxContext};
     use sui::table;
     use sui::ecdsa;
     use sui::transfer;
+    use sui::event;
 
     use std::vector;
     use std::option::{Self, Option};
 
     // operation as an object
-    struct Operation has copy, drop, store {
-        // module_name: vector<u8>,
+    struct Operation has key, store {
+        id: UID,
+        receiver: address,
         op_name: vector<u8>,
         data: RawPayload,
         dante_ctx: ProtocolContext,
@@ -40,6 +42,13 @@ module dante_types::receiver {
 
         // message hash. not included in raw bytes
         message_hash: vector<u8>,
+    }
+
+    // The event happens when message verification completed
+    struct EventToAccount has copy, drop {
+        id: ID,
+        msgID: u128,
+        fromChain: vector<u8>,
     }
 
     struct MessageCopy has copy, drop, store {
@@ -87,6 +96,8 @@ module dante_types::receiver {
     /////////////////////////////////////////////////////////////////////////
     /// Operation
     // public fun op_module_name(op: &Operation): vector<u8> {op.module_name}
+    public fun op_object_id(op: &Operation): ID {*object::uid_as_inner(&op.id)}
+    public fun op_receiver(op: &Operation): address {op.receiver}
     public fun op_op_name(op: &Operation): vector<u8> {op.op_name}
     public fun op_data(op: &Operation): RawPayload {op.data}
     public fun op_dante_ctx(op: &Operation): ProtocolContext {op.dante_ctx}
@@ -125,6 +136,8 @@ module dante_types::receiver {
 
         let msg_cache_opt = option::none();
 
+        // std::debug::print(&1);
+
         if (table::contains(&protocol_recver.message_cache, cache_id)) {
             let recv_cache = table::borrow_mut(&mut protocol_recver.message_cache, cache_id);
             if (!check_submitter(recv_cache, &submitter)) {
@@ -143,14 +156,46 @@ module dante_types::receiver {
                 increase_recved_id(protocol_recver, fromChain);
 
                 msg_cache_opt = option::some(recv_cache);
+
+                table::add(&mut protocol_recver.message_cache, cache_id, recv_cache);
             };
         };
 
         if (option::is_some(&msg_cache_opt)) {
+            // std::debug::print(&2);
             let cache_ref = option::borrow_mut(&mut msg_cache_opt);
             if (cache_ref.submission_count >= protocol_recver.default_copy_count) {
                 let opt_msg = message_verify(cache_ref);
+
                 assert!(option::is_some(&opt_msg), 0);
+
+                let msg_instance = *option::borrow(&opt_msg);
+                let suiUid = object::new(ctx);
+                let suiID = object::uid_to_inner(&suiUid);
+                transfer::transfer(Operation {
+                    id: suiUid,
+                    receiver: msg_instance.contractName,
+                    op_name: msg_instance.actionName,
+                    data: msg_instance.data,
+                    dante_ctx: env_recorder::create_context(
+                        msg_instance.msgID,
+                        msg_instance.fromChain,
+                        msg_instance.sender,
+                        msg_instance.signer,
+                        msg_instance.sqos,
+                        msg_instance.session,
+                    ),
+                }, msg_instance.contractName);
+
+                // std::debug::print(&msg_instance.sender);
+
+                event::emit(EventToAccount {
+                    id: suiID,
+                    msgID,
+                    fromChain,
+                });
+
+                // std::debug::print(&3);
             }
         }
     }
@@ -347,5 +392,113 @@ module dante_types::receiver {
 
         op1 = vector<TestStruck>[];
         assert!(std::vector::is_empty(&op1), 0);
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+    
+    const ENCODE_ERROR: u64 = 0;
+
+    #[test]
+    public fun test_recv_message_rawbytes() {
+        use sui::test_scenario;
+        // use sui::transfer;
+        use sui::ecdsa;
+        use sui::bcs;
+
+        use std::hash;
+
+        let alice = @0x010203;
+        // let bob = @0xB0B1;
+
+        let bcs_sqos = vector::empty<vector<u8>>();
+        vector::push_back(&mut bcs_sqos, bcs::to_bytes(&SQoS::create_item(SQoS::sqos_challenge(), vector<u8>[1, 2, 3])));
+
+        let bcs_data = vector::empty<vector<u8>>();
+        vector::push_back(&mut bcs_data, bcs::to_bytes(&message_item::create_raw_item(b"Nika", vector<vector<u8>>[b"Hello", b"Nice Day"])));
+        vector::push_back(&mut bcs_data, bcs::to_bytes(&message_item::create_raw_item(b"Luffy", vector<u128>[73, 37])));
+
+        let bcs_session = bcs::to_bytes(&session::create_session(1, 3, option::none(), option::some(vector<u8>[49, 49]), option::none()));
+
+        let scenario_val = test_scenario::begin(alice);
+        let scenario = &mut scenario_val;
+
+        test_scenario::next_tx(scenario, alice);
+        {
+            test_init(test_scenario::ctx(scenario));
+            env_recorder::test_init(test_scenario::ctx(scenario));
+        };
+
+        test_scenario::next_tx(scenario, alice);
+        {
+            let env = test_scenario::take_shared<env_recorder::SendOutEnv>(scenario);
+            let protocol_recver = test_scenario::take_shared<ProtocolRecver>(scenario);
+
+            let sender = test_scenario::sender(scenario);
+
+            submit_message(1, env_recorder::chain_name(), b"Polkadot",
+                            bcs_sqos,       // bcs bytes of SQoSItem
+                            sender,
+                            vector<u8>[0, 0, 0, 0],
+                            bcs_data,       // bcs bytes of MessageItem
+                            message_item::address_to_rawbytes(&sender),
+                            message_item::address_to_rawbytes(&sender),
+                            bcs_session,            // bcs bytes of Session
+                            &mut protocol_recver,
+                            test_scenario::ctx(scenario));
+
+            test_scenario::return_shared(env);
+            test_scenario::return_shared(protocol_recver);
+        };
+
+        test_scenario::next_tx(scenario, alice);
+        {
+            let except_vec = vector<u8>[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 
+                                83, 85, 73, 95, 84, 69, 83, 84, 78, 69, 84, 80, 111, 108, 107, 97, 100, 111, 116, 1, 1, 2, 3, 
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 
+                                78, 105, 107, 97, 72, 101, 108, 108, 111, 78, 105, 99, 101, 32, 68, 97, 121, 76, 117, 102, 102, 121, 
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 73, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 49, 49];
+
+            let operation = test_scenario::take_from_sender<Operation>(scenario);
+
+            let recvMessage = RecvMessage {
+                msgID: env_recorder::protocol_context_id(&operation.dante_ctx),
+                fromChain: env_recorder::protocol_context_from_chain(&operation.dante_ctx),
+                toChain: b"Polkadot",
+                sqos: env_recorder::protocol_context_sqos(&operation.dante_ctx),
+                contractName: operation.receiver,
+                actionName: operation.op_name,
+                data: operation.data,
+                sender: env_recorder::protocol_context_sender(&operation.dante_ctx),
+                signer: env_recorder::protocol_context_signer(&operation.dante_ctx),
+                session: env_recorder::protocol_context_session(&operation.dante_ctx),
+                message_hash: vector<u8>[],
+            };
+
+            // recvMessage.message_hash = ecdsa::keccak256(&into_raw_bytes(&recvMessage));
+            
+            // std::debug::print(&into_raw_bytes(&recvMessage));
+            // std::debug::print(&except_vec);
+            // let sender = test_scenario::sender(scenario);
+            // std::debug::print(&message_item::address_to_rawbytes(&sender));
+            // std::debug::print(&recvMessage.sender);
+            // std::debug::print(&env_recorder::protocol_context_sender(&operation.dante_ctx));
+
+            assert!(into_raw_bytes(&recvMessage) == except_vec, ENCODE_ERROR);
+
+            let sm_hash_1 = ecdsa::keccak256(&into_raw_bytes(&recvMessage));
+            std::debug::print(&sm_hash_1);
+
+            let sm_hash_2 = hash::sha2_256(into_raw_bytes(&recvMessage));
+            std::debug::print(&sm_hash_2);
+
+            let sm_hash_3 = hash::sha3_256(into_raw_bytes(&recvMessage));
+            std::debug::print(&sm_hash_3);
+
+            test_scenario::return_to_sender(scenario, operation);
+        };
+
+        test_scenario::end(scenario_val);
     }
 }
