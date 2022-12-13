@@ -260,13 +260,19 @@ var SuiRecvMessage = /** @class */ (function () {
         this.bcs_sqos.push(sqosItem);
     };
     SuiRecvMessage.prototype.into_parameters = function () {
+        var bcs = new bcs_1.BCS((0, bcs_1.getSuiMoveConfig)());
         var output = [this.msgID];
-        output.push(new Uint8Array(Buffer.from(this.fromChain, 'utf-8')));
-        output.push(new Uint8Array(Buffer.from(this.toChain, 'utf-8')));
+        // return output;
+        // output.push('0x'+Buffer.from(this.fromChain, 'utf-8').toString('hex'));
+        output.push(Array.from(Buffer.from(this.fromChain, 'utf-8')));
+        // output.push(this.fromChain);
+        // output.push(this.toChain);
+        output.push(Array.from(Buffer.from(this.toChain, 'utf-8')));
         // bcs sqos to bcs vector
         var sqos = [];
         for (var idx in this.bcs_sqos) {
-            sqos.push(this.bcs_sqos[idx].en_bcs_bytes());
+            // sqos.push('0x'+Buffer.from(this.bcs_sqos[idx].en_bcs_bytes()).toString('hex'));
+            sqos.push(Array.from(this.bcs_sqos[idx].en_bcs_bytes()));
         }
         output.push(sqos);
         // bcs sqos end
@@ -275,7 +281,8 @@ var SuiRecvMessage = /** @class */ (function () {
         // bcs data to bcs vector
         var payload = [];
         for (var idx in this.bcs_payload) {
-            payload.push(this.bcs_payload[idx].en_bcs_bytes());
+            // payload.push('0x'+Buffer.from(this.bcs_payload[idx].en_bcs_bytes()!).toString('hex'));
+            payload.push(Array.from(this.bcs_payload[idx].en_bcs_bytes()));
         }
         output.push(payload);
         // bcs data end
@@ -283,7 +290,8 @@ var SuiRecvMessage = /** @class */ (function () {
         output.push(this.sender);
         output.push(this.signer);
         // bcs session to bcs vector
-        output.push(this.bcs_session.en_bcs_bytes());
+        // output.push('0x'+Buffer.from(this.bcs_session.en_bcs_bytes()).toString('hex'));
+        output.push(Array.from(this.bcs_session.en_bcs_bytes()));
         // bcs session end
         return output;
     };
