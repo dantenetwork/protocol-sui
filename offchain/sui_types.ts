@@ -1,5 +1,4 @@
 import { BCS, fromB64, toB64, getSuiMoveConfig } from '@mysten/bcs'
-import * as utf8 from 'utf8';
 
 export enum SuiMsgType {
     suiString = 0,
@@ -123,6 +122,7 @@ export class SuiMessageItem {
         this.name = name;
         this.type = type;
         this.value = bcs_value(type, value)?.toBytes();
+        // console.log(this.value);
 
         this.bcs = new BCS(getSuiMoveConfig());
 
@@ -130,7 +130,7 @@ export class SuiMessageItem {
         this.bcs.registerStructType(this.RMI_TypeName, {
             name: BCS.STRING,
             type: BCS.U8,
-            value: BCS.STRING
+            value: 'vector<u8>'
         });
     }
 
@@ -139,7 +139,7 @@ export class SuiMessageItem {
             return this.bcs.ser(this.RMI_TypeName, {
                 name: this.name,
                 type: this.type,
-                value: Buffer.from(this.value).toString('base64'),
+                value: this.value,
             }).toBytes();
         }
     }
@@ -176,14 +176,14 @@ export class SuiSQoSItem {
         this.bcs = new BCS(getSuiMoveConfig());
         this.bcs.registerStructType(this.RSI_TypeName, {
             type: BCS.U8,
-            value: BCS.STRING
+            value: 'vector<u8>'
         });
     }
 
     en_bcs_bytes() {
         return this.bcs.ser(this.RSI_TypeName, {
             type: this.t,
-            value: Buffer.from(this.v).toString('base64'),
+            value: this.v,
         }).toBytes();
     }
 

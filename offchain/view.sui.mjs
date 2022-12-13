@@ -10,10 +10,10 @@ const args = process.argv;
 const provider = new JsonRpcProvider(Network.DEVNET);
 const bcs = new BCS(getSuiMoveConfig());
 
-const package_id = '0xddbbb23ba8d24a546b59d94e0cd4f486c3e07b65';
-const env_object_id = '0x7b2434f040dbe198d4abd830b460dcaf15a743a9';
-const sender_object_id = '0x403009e5dc19fa68d9b35e73e0481a063ca87751';
-const recver_object_id = '0x5f34952fa0f60aeb39828fb03c436d11e65d050e';
+const package_id = '0xc8b0439463397f9f94a20cd5316ce507b7db8a34';
+const env_object_id = '0x651c23c7c484b790316830185bc10da7ce3376f3';
+const sender_object_id = '0xc230379917e36e2409a4f14ec7504899e4014343';
+const recver_object_id = '0x394b3f4777fed8f44ec667c5ef9d5615414668e3';
 
 const default_operator = '0x59ca90e94cb1427c30aca6c44c7ac1bc2e44dc38';
 const secret_key = 'd9fb0917e1d83e2d42f14f6ac5588e755901150f0aa0953bbf529752e786f50c';
@@ -318,7 +318,7 @@ async function test_submit_message() {
     const sess = new SuiTypes.SuiSession('12800000', SuiTypes.SessionType.MessageSend, null, [73, 37], [73, 37]);
 
     let recvMsg = new SuiTypes.SuiRecvMessage(
-        '1', 'Polkadot', 'Sui', default_operator, [0x01, 0x02, 0x03, 0x04], [0xff, 0xaa], [0xff, 0xaa], sess 
+        '2', 'Polkadot', 'Sui', default_operator, [0x01, 0x02, 0x03, 0x04], [0xff, 0xaa], [0xff, 0xaa], sess 
     );
 
     const item = new SuiTypes.SuiSQoSItem(SuiTypes.SuiSQoSType.Challenge, [73, 37]);
@@ -344,6 +344,35 @@ async function test_submit_message() {
     console.log(getExecutionStatus(txn));
 }
 
+async function recv_message_event() {
+    const bcs = new BCS(getSuiMoveConfig());
+
+    const recv_event_name = 'EventSentMessage';
+    bcs.registerStructType(recv_event_name, {
+        id: BCS.ADDRESS,
+        msgID: BCS.U128,
+        fromChain: 'vector<u8>'
+    });
+
+    const failed_name = 'FailedName';
+    bcs.registerStructType(failed_name, {
+        where: BCS.U64,
+        msgID: BCS.U128,
+        fromChain: 'vector<u8>'
+    });
+
+    const eventQuery = {"MoveEvent": package_id+"::receiver::EventToAccount"};
+    const recvMsgEvents = await provider.getEvents(eventQuery);
+    console.log('Event Success: ');
+    console.log(recvMsgEvents);
+
+    console.log('***********************************************');
+    const failed_query = {"MoveEvent": package_id+"::receiver::EventFailed"};
+    const failed_events = await provider.getEvents(failed_query);
+    console.log('Event Failed: ');
+    console.log(failed_events);
+}
+
 async function transferSui(coinObj, to) {
     let tx = await suiDefaultSigner.transferSui({
         suiObjectId: coinObj,
@@ -363,6 +392,7 @@ async function transferSui(coinObj, to) {
 // await test_types_SQoSItem();
 // await test_types_Session();
 
-await test_submit_message();
+// await test_submit_message();
 
 // await transferSui(args[2], args[3]);
+await recv_message_event();

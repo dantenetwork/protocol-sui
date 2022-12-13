@@ -111,12 +111,13 @@ var SuiMessageItem = /** @class */ (function () {
         this.name = name;
         this.type = type;
         this.value = (_a = bcs_value(type, value)) === null || _a === void 0 ? void 0 : _a.toBytes();
+        // console.log(this.value);
         this.bcs = new bcs_1.BCS((0, bcs_1.getSuiMoveConfig)());
         this.RMI_TypeName = 'RawMessageItem';
         this.bcs.registerStructType(this.RMI_TypeName, {
             name: bcs_1.BCS.STRING,
             type: bcs_1.BCS.U8,
-            value: bcs_1.BCS.STRING
+            value: 'vector<u8>'
         });
     }
     SuiMessageItem.prototype.en_bcs_bytes = function () {
@@ -124,7 +125,7 @@ var SuiMessageItem = /** @class */ (function () {
             return this.bcs.ser(this.RMI_TypeName, {
                 name: this.name,
                 type: this.type,
-                value: Buffer.from(this.value).toString('base64')
+                value: this.value
             }).toBytes();
         }
     };
@@ -155,13 +156,13 @@ var SuiSQoSItem = /** @class */ (function () {
         this.bcs = new bcs_1.BCS((0, bcs_1.getSuiMoveConfig)());
         this.bcs.registerStructType(this.RSI_TypeName, {
             type: bcs_1.BCS.U8,
-            value: bcs_1.BCS.STRING
+            value: 'vector<u8>'
         });
     }
     SuiSQoSItem.prototype.en_bcs_bytes = function () {
         return this.bcs.ser(this.RSI_TypeName, {
             type: this.t,
-            value: Buffer.from(this.v).toString('base64')
+            value: this.v
         }).toBytes();
     };
     SuiSQoSItem.prototype.de_bcs_bytes = function (bcs_bytes) {

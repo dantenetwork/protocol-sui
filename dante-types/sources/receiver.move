@@ -51,6 +51,12 @@ module dante_types::receiver {
         fromChain: vector<u8>,
     }
 
+    struct EventFailed has copy, drop {
+        where: u64,
+        msgID: u128,
+        fromChain: vector<u8>,
+    }
+
     struct MessageCopy has copy, drop, store {
         message: RecvMessage,
         submitters: vector<address>,
@@ -196,6 +202,12 @@ module dante_types::receiver {
                 });
 
                 // std::debug::print(&3);
+            } else {
+                    event::emit(EventFailed {
+                        where: 2,
+                        msgID,
+                        fromChain, 
+                });
             }
         }
     }
