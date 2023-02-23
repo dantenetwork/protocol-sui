@@ -1,14 +1,14 @@
 ## the `shared_id` shold be remembered, which is just like the `contract address` on smart contract-based chains
 
-env_shared_id: 0x3348b94cb733e60f6e73947854e69a2287d80f46
+env_shared_id: 0x651c23c7c484b790316830185bc10da7ce3376f3
 
-sender_shared_id: 0x115f9da0743e35d1fdc3ac53910dcda4e4712f1d
+sender_shared_id: 0xc230379917e36e2409a4f14ec7504899e4014343
 
-recver_shared_id: 
+recver_shared_id: 0x394b3f4777fed8f44ec667c5ef9d5615414668e3
 
-package: 0xd9946316f4d7a2828178ac38d5209298b381d893
+package: 0xc8b0439463397f9f94a20cd5316ce507b7db8a34
 
-sui client call --function test_send_message_out --module sender --package 0xd9946316f4d7a2828178ac38d5209298b381d893 --args \"0x3348b94cb733e60f6e73947854e69a2287d80f46\" \"0x115f9da0743e35d1fdc3ac53910dcda4e4712f1d\" --gas-budget 30000
+sui client call --function test_send_message_out --module sender --package 0xc8b0439463397f9f94a20cd5316ce507b7db8a34 --args \"0x651c23c7c484b790316830185bc10da7ce3376f3\" \"0xc230379917e36e2409a4f14ec7504899e4014343\" --gas-budget 30000
 
 
-sui client object --id <> --json
+sui client object <> --json

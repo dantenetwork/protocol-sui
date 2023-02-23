@@ -111,12 +111,13 @@ var SuiMessageItem = /** @class */ (function () {
         this.name = name;
         this.type = type;
         this.value = (_a = bcs_value(type, value)) === null || _a === void 0 ? void 0 : _a.toBytes();
+        // console.log(this.value);
         this.bcs = new bcs_1.BCS((0, bcs_1.getSuiMoveConfig)());
         this.RMI_TypeName = 'RawMessageItem';
         this.bcs.registerStructType(this.RMI_TypeName, {
             name: bcs_1.BCS.STRING,
             type: bcs_1.BCS.U8,
-            value: bcs_1.BCS.STRING
+            value: 'vector<u8>'
         });
     }
     SuiMessageItem.prototype.en_bcs_bytes = function () {
@@ -124,7 +125,7 @@ var SuiMessageItem = /** @class */ (function () {
             return this.bcs.ser(this.RMI_TypeName, {
                 name: this.name,
                 type: this.type,
-                value: Buffer.from(this.value).toString('base64')
+                value: this.value
             }).toBytes();
         }
     };
@@ -155,13 +156,13 @@ var SuiSQoSItem = /** @class */ (function () {
         this.bcs = new bcs_1.BCS((0, bcs_1.getSuiMoveConfig)());
         this.bcs.registerStructType(this.RSI_TypeName, {
             type: bcs_1.BCS.U8,
-            value: bcs_1.BCS.STRING
+            value: 'vector<u8>'
         });
     }
     SuiSQoSItem.prototype.en_bcs_bytes = function () {
         return this.bcs.ser(this.RSI_TypeName, {
             type: this.t,
-            value: Buffer.from(this.v).toString('base64')
+            value: this.v
         }).toBytes();
     };
     SuiSQoSItem.prototype.de_bcs_bytes = function (bcs_bytes) {
@@ -260,13 +261,19 @@ var SuiRecvMessage = /** @class */ (function () {
         this.bcs_sqos.push(sqosItem);
     };
     SuiRecvMessage.prototype.into_parameters = function () {
+        var bcs = new bcs_1.BCS((0, bcs_1.getSuiMoveConfig)());
         var output = [this.msgID];
-        output.push(new Uint8Array(Buffer.from(this.fromChain, 'utf-8')));
-        output.push(new Uint8Array(Buffer.from(this.toChain, 'utf-8')));
+        // return output;
+        // output.push('0x'+Buffer.from(this.fromChain, 'utf-8').toString('hex'));
+        output.push(Array.from(Buffer.from(this.fromChain, 'utf-8')));
+        // output.push(this.fromChain);
+        // output.push(this.toChain);
+        output.push(Array.from(Buffer.from(this.toChain, 'utf-8')));
         // bcs sqos to bcs vector
         var sqos = [];
         for (var idx in this.bcs_sqos) {
-            sqos.push(this.bcs_sqos[idx].en_bcs_bytes());
+            // sqos.push('0x'+Buffer.from(this.bcs_sqos[idx].en_bcs_bytes()).toString('hex'));
+            sqos.push(Array.from(this.bcs_sqos[idx].en_bcs_bytes()));
         }
         output.push(sqos);
         // bcs sqos end
@@ -275,7 +282,8 @@ var SuiRecvMessage = /** @class */ (function () {
         // bcs data to bcs vector
         var payload = [];
         for (var idx in this.bcs_payload) {
-            payload.push(this.bcs_payload[idx].en_bcs_bytes());
+            // payload.push('0x'+Buffer.from(this.bcs_payload[idx].en_bcs_bytes()!).toString('hex'));
+            payload.push(Array.from(this.bcs_payload[idx].en_bcs_bytes()));
         }
         output.push(payload);
         // bcs data end
@@ -283,7 +291,8 @@ var SuiRecvMessage = /** @class */ (function () {
         output.push(this.sender);
         output.push(this.signer);
         // bcs session to bcs vector
-        output.push(this.bcs_session.en_bcs_bytes());
+        // output.push('0x'+Buffer.from(this.bcs_session.en_bcs_bytes()).toString('hex'));
+        output.push(Array.from(this.bcs_session.en_bcs_bytes()));
         // bcs session end
         return output;
     };

@@ -5,15 +5,21 @@ import fs from 'fs';
 
 import * as SuiTypes from './sui_types.js'
 
+const args = process.argv;
+
 const provider = new JsonRpcProvider(Network.DEVNET);
 const bcs = new BCS(getSuiMoveConfig());
 
-const package_id = '0xd9946316f4d7a2828178ac38d5209298b381d893';
-const env_object_id = '0x3348b94cb733e60f6e73947854e69a2287d80f46';
-const sender_object_id = '0x115f9da0743e35d1fdc3ac53910dcda4e4712f1d';
-const recver_object_id = '';
+const package_id = '0xc8b0439463397f9f94a20cd5316ce507b7db8a34';
+const env_object_id = '0x651c23c7c484b790316830185bc10da7ce3376f3';
+const sender_object_id = '0xc230379917e36e2409a4f14ec7504899e4014343';
+const recver_object_id = '0x394b3f4777fed8f44ec667c5ef9d5615414668e3';
 
 const default_operator = '0x59ca90e94cb1427c30aca6c44c7ac1bc2e44dc38';
+const secret_key = 'd9fb0917e1d83e2d42f14f6ac5588e755901150f0aa0953bbf529752e786f50c';
+let buf = Buffer.from(secret_key, 'hex');
+const keypair = Secp256k1Keypair.fromSecretKey(buf);
+let suiDefaultSigner = new RawSigner(keypair, provider);
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
@@ -288,11 +294,31 @@ async function test_types_Session() {
     // console.log(new Uint8Array(Buffer.from(deItem.answer.some, 'base64')));
 }
 
+// async function submit_recv_message(recvMsg) {
+//     const txn = await suiDefaultSigner.executeMoveCall({
+//         packageObjectId: package_id,
+//         module: 'receiver',
+//         function: 'submit_message',
+//         typeArguments: [],
+//         arguments: recvMsg.into_parameters(),
+//         gasBudget: 30000,
+//     });
+//     console.log(getExecutionStatus(txn));
+// }
+
 async function test_submit_message() {
+    // let bcs = new BCS(getSuiMoveConfig());
+
+    // let output = [bcs.ser(BCS.U128, '12800000').toBytes()];
+
+    // console.log(output);
+
+    // return;
+    
     const sess = new SuiTypes.SuiSession('12800000', SuiTypes.SessionType.MessageSend, null, [73, 37], [73, 37]);
 
     let recvMsg = new SuiTypes.SuiRecvMessage(
-        1, 'Polkadot', 'Sui', default_operator, [0x01, 0x02, 0x03, 0x04], [0xff], [0xff], sess 
+        '2', 'Polkadot', 'Sui', default_operator, [0x01, 0x02, 0x03, 0x04], [0xff, 0xaa], [0xff, 0xaa], sess 
     );
 
     const item = new SuiTypes.SuiSQoSItem(SuiTypes.SuiSQoSType.Challenge, [73, 37]);
@@ -302,6 +328,58 @@ async function test_submit_message() {
     recvMsg.add_message_item(msgitem);
 
     console.log(recvMsg.into_parameters());
+    // return;
+
+    let inputArgs = recvMsg.into_parameters();
+    inputArgs.push(recver_object_id);
+
+    const txn = await suiDefaultSigner.executeMoveCall({
+        packageObjectId: package_id,
+        module: 'receiver',
+        function: 'submit_message',
+        typeArguments: [],
+        arguments: inputArgs,
+        gasBudget: 30000,
+    });
+    console.log(getExecutionStatus(txn));
+}
+
+async function recv_message_event() {
+    const bcs = new BCS(getSuiMoveConfig());
+
+    const recv_event_name = 'EventSentMessage';
+    bcs.registerStructType(recv_event_name, {
+        id: BCS.ADDRESS,
+        msgID: BCS.U128,
+        fromChain: 'vector<u8>'
+    });
+
+    const failed_name = 'FailedName';
+    bcs.registerStructType(failed_name, {
+        where: BCS.U64,
+        msgID: BCS.U128,
+        fromChain: 'vector<u8>'
+    });
+
+    const eventQuery = {"MoveEvent": package_id+"::receiver::EventToAccount"};
+    const recvMsgEvents = await provider.getEvents(eventQuery);
+    console.log('Event Success: ');
+    console.log(recvMsgEvents);
+
+    console.log('***********************************************');
+    const failed_query = {"MoveEvent": package_id+"::receiver::EventFailed"};
+    const failed_events = await provider.getEvents(failed_query);
+    console.log('Event Failed: ');
+    console.log(failed_events);
+}
+
+async function transferSui(coinObj, to) {
+    let tx = await suiDefaultSigner.transferSui({
+        suiObjectId: coinObj,
+        gasBudget: 30000,
+        recipient: to,
+        amount: null
+    });
 }
 
 // await bcs_test();
@@ -314,4 +392,7 @@ async function test_submit_message() {
 // await test_types_SQoSItem();
 // await test_types_Session();
 
-await test_submit_message();
+// await test_submit_message();
+
+// await transferSui(args[2], args[3]);
+await recv_message_event();

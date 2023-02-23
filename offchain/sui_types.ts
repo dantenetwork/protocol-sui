@@ -1,5 +1,4 @@
 import { BCS, fromB64, toB64, getSuiMoveConfig } from '@mysten/bcs'
-import * as utf8 from 'utf8';
 
 export enum SuiMsgType {
     suiString = 0,
@@ -123,6 +122,7 @@ export class SuiMessageItem {
         this.name = name;
         this.type = type;
         this.value = bcs_value(type, value)?.toBytes();
+        // console.log(this.value);
 
         this.bcs = new BCS(getSuiMoveConfig());
 
@@ -130,7 +130,7 @@ export class SuiMessageItem {
         this.bcs.registerStructType(this.RMI_TypeName, {
             name: BCS.STRING,
             type: BCS.U8,
-            value: BCS.STRING
+            value: 'vector<u8>'
         });
     }
 
@@ -139,7 +139,7 @@ export class SuiMessageItem {
             return this.bcs.ser(this.RMI_TypeName, {
                 name: this.name,
                 type: this.type,
-                value: Buffer.from(this.value).toString('base64'),
+                value: this.value,
             }).toBytes();
         }
     }
@@ -176,14 +176,14 @@ export class SuiSQoSItem {
         this.bcs = new BCS(getSuiMoveConfig());
         this.bcs.registerStructType(this.RSI_TypeName, {
             type: BCS.U8,
-            value: BCS.STRING
+            value: 'vector<u8>'
         });
     }
 
     en_bcs_bytes() {
         return this.bcs.ser(this.RSI_TypeName, {
             type: this.t,
-            value: Buffer.from(this.v).toString('base64'),
+            value: this.v,
         }).toBytes();
     }
 
@@ -277,7 +277,7 @@ export class SuiRecvMessage {
     fromChain: string;
     toChain: string;
     bcs_sqos: Array<SuiSQoSItem>;
-    accountName: string;
+    accountName: Uint8Array;
     actionName: Uint8Array;
     bcs_payload: Array<SuiMessageItem>;
     sender: Uint8Array;
@@ -288,7 +288,7 @@ export class SuiRecvMessage {
                 fromChain: string,
                 toChain: string,
                 // bcs_sqos: Array<SuiSQoSItem>,
-                accountName: string,
+                accountName: Uint8Array,
                 actionName: Uint8Array,
                 // bcs_data: Array<SuiMessageItem>,
                 sender: Uint8Array,
@@ -316,14 +316,21 @@ export class SuiRecvMessage {
     }
 
     into_parameters() {
+        let bcs = new BCS(getSuiMoveConfig());
+
         let output: Array<any> = [this.msgID];
-        output.push(new Uint8Array(Buffer.from(this.fromChain, 'utf-8')));
-        output.push(new Uint8Array(Buffer.from(this.toChain, 'utf-8')));
+        // return output;
+        // output.push('0x'+Buffer.from(this.fromChain, 'utf-8').toString('hex'));
+        output.push(Array.from(Buffer.from(this.fromChain, 'utf-8')));
+        // output.push(this.fromChain);
+        // output.push(this.toChain);
+        output.push(Array.from(Buffer.from(this.toChain, 'utf-8')));
         
         // bcs sqos to bcs vector
-        let sqos: Array<Uint8Array> = [];
+        let sqos: Array<number[]> = [];
         for (var idx in this.bcs_sqos) {
-            sqos.push(this.bcs_sqos[idx].en_bcs_bytes());
+            // sqos.push('0x'+Buffer.from(this.bcs_sqos[idx].en_bcs_bytes()).toString('hex'));
+            sqos.push(Array.from(this.bcs_sqos[idx].en_bcs_bytes()));
         }
         output.push(sqos);
         // bcs sqos end
@@ -332,9 +339,10 @@ export class SuiRecvMessage {
         output.push(this.actionName);
 
         // bcs data to bcs vector
-        let payload: Array<Uint8Array> = [];
+        let payload: Array<number[]> = [];
         for (var idx in this.bcs_payload) {
-            payload.push(this.bcs_payload[idx].en_bcs_bytes()!);
+            // payload.push('0x'+Buffer.from(this.bcs_payload[idx].en_bcs_bytes()!).toString('hex'));
+            payload.push(Array.from(this.bcs_payload[idx].en_bcs_bytes()!));
         }
         output.push(payload);
         // bcs data end
@@ -344,7 +352,8 @@ export class SuiRecvMessage {
         output.push(this.signer);
 
         // bcs session to bcs vector
-        output.push(this.bcs_session.en_bcs_bytes());
+        // output.push('0x'+Buffer.from(this.bcs_session.en_bcs_bytes()).toString('hex'));
+        output.push(Array.from(this.bcs_session.en_bcs_bytes()));
         // bcs session end
         
         return output;
